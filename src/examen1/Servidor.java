@@ -16,6 +16,7 @@ public class Servidor {
   public static void main(String[] args) {
     HashMap <String, HashMap> bases = new HashMap<>();
     String baseActual = null;
+    String dbName;
     
     try {
       /* Envio los datos */
@@ -37,10 +38,15 @@ public class Servidor {
           
           switch(a) {
             case 0:   /* Se crea la base de datos -> se pone en el hash map */
-              String dbName = se.createDatabase(query);                         // Se obtiene el nombre de la base con la que se hará la operación. 
-              HashMap <String, LinkedList> base = new HashMap<>();                  // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
-              bases.put(dbName, base);                                          // Se añade al HashMap bases los datos obtenidos anteriormente.
-              mensajeAEnviar = "Base de datos creada satisfactoriamente";       // Se envía un mensaje de que se creo de manera correcta.
+              if(se.verifySyntaxCreateDatabase(query)){
+                  dbName = se.createDatabase(query);                         // Se obtiene el nombre de la base con la que se hará la operación. 
+                  HashMap <String, LinkedList> base = new HashMap<>();                  // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
+                  bases.put(dbName, base);                                          // Se añade al HashMap bases los datos obtenidos anteriormente.
+                  mensajeAEnviar = "Base de datos creada satisfactoriamente";       // Se envía un mensaje de que se creo de manera correcta.
+              }
+              else{
+                  System.out.println("Error de Sintaxis: Create Database");
+              }
               break; 
             
             case 1:  /* Se remueve la base de datos del hash map */

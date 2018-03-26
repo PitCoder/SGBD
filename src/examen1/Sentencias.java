@@ -14,35 +14,160 @@ public class Sentencias {
   
   public Sentencias() {
     validPrefixes = new ArrayList<>();
-    validPrefixes.add("CREATE DATABASE");   // 0
-    validPrefixes.add("DROP DATABASE");     // 1
+    validPrefixes.add("CREATEDATABASE");   // 0
+    validPrefixes.add("DROPDATABASE");     // 1
     validPrefixes.add("USE");               // 2
-    validPrefixes.add("CREATE TABLE");      // 3    /* CREATE TABLE tabla1 (nombre varchar(50), edad int); */
-    validPrefixes.add("DROP TABLE");        // 4
+    validPrefixes.add("CREATETABLE");      // 3    /* CREATE TABLE tabla1 (nombre varchar(50), edad int); */
+    validPrefixes.add("DROPTABLE");        // 4
     validPrefixes.add("SELECT");            // 5
     validPrefixes.add("INSERT INTO");       // 6
     validPrefixes.add("UPDATE");            // 7
-    validPrefixes.add("SHOW DATABASES");    // 8
-    validPrefixes.add("SHOW TABLES");    // 8
+    validPrefixes.add("SHOWDATABASES");    // 8
+    validPrefixes.add("SHOWTABLES");    // 8
   }
   
   
   public int getTipoSentencia(String query) {
     int tipo = -1;
-    this.query = query.toUpperCase();      // Se ponen mayusculas para evitar problemas.
-    
+    //this.query = query.toUpperCase();      Esta Linea es inecesaria, ya que se ha convertido a mayúsculas previamente
     for (int i = 0; i < validPrefixes.size(); i++) {
-      if (startsWith(validPrefixes.get(i))) {
+      if (startsWith(query.trim(), validPrefixes.get(i))) {
         return i;
       }
     }
-    
     return tipo;
   }
   
-  private boolean startsWith(String prefix) {
+  private boolean startsWith(String query, String prefix) {
     return this.query.startsWith(prefix);
   }
+  
+  public void findErrorPosition(String query, int index){
+      int line = 1;
+      int column = 1;
+      for(int i=0; i<index; i++){
+        if(query.charAt(i) == '\n' || query.charAt(i) == '\r'){
+            line++;
+          column = 1;
+        }
+        column++;
+      }
+      System.out.println("Error in line: " + line + " column: " + column);
+  }
+  
+  /* Verificación de sintaxis para todas las sentencias SQL que se implementaran */
+  public boolean verifySyntaxCreateDatabase(String query){
+      String regex = "[\\s]*(CREATE)[\\s]+(DATABASE)[\\s]+[_0-9A-Z$]+[_A-Z$][\\s]*[;][\\s]*";   
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxDropDatabase(String query){
+      String regex = "[\\s]*(DROP)[\\s]+(DATABASE)[\\s]+[_0-9A-Z$]+[_A-Z$][\\s]*[;][\\s]*";   
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxUseDatabase(String query){
+      String regex = "[\\s]*(USE)[\\s]+[_0-9A-Z$]+[_A-Z$][\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxCreateTable(String query) { 
+      String regex = "(CREATE) (TABLE) [\\w]+[\\s]+[(]([A-Z0-9]+ (VARCHAR|INT|DOUBLE|CHAR)+[,]*[\\s]*)*([A-Z0-9]+ (VARCHAR|INT|DOUBLE|CHAR)+)+[)][;]";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxDropTable(String query){
+      String regex = "[\\s]*(DROP)[\\s]+(TABLE)[\\s]+[0-9_A-Z$]+[_A-Z$][\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxSelect(String query){
+      String regex = "[\\s]*(SELECT)[\\s]+((ALL)|(([0-9_A-Z$]+[_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*))[\\s]+(FROM)[\\s]+[0-9_A-Z$]+[_A-Z$][\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxInsertInto(String query){
+      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([0-9_A-Z$]+[0-9_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*[)])[\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxUpdate(String query){
+      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([0-9_A-Z$]+[0-9_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*[)])[\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxShowDatabases(String query){
+      String regex = "[\\s]*(SHOW)[\\s]+(DATABASES)[\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  public boolean verifySyntaxShowTables(String query){
+      String regex = "[\\s]*(SHOW)[\\s]+(TABLES)[\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      if(!result){
+          findErrorPosition(query, matcher.end());
+      }
+      return result;
+  }
+  
+  /* Fin de los metodos de verificacion */
+  
   
   private String getNombreBase(String query, String sentencia) {                /* Devuelve nombre base de sentencias simples */
     String dataBaseName = query.replace(sentencia, "");                         // Se elimina el inicio de la sentencia
@@ -63,17 +188,6 @@ public class Sentencias {
   
   public String useDatabase(String query) {
     return getNombreBase(query, "USE");
-  }
-  
-  public boolean verifySyntaxCreateTable(String query) { 
-    query = query.toUpperCase();
-    String regex = "(CREATE) (TABLE) [\\w]+[\\s]+[(]([A-Z0-9]+ (VARCHAR|INT|DOUBLE|CHAR)+[,]*[\\s]*)*([A-Z0-9]+ (VARCHAR|INT|DOUBLE|CHAR)+)+[)][;]";
-
-    /* Verificación que cumpla con la regex */
-    Pattern pat = Pattern.compile(regex);
-    Matcher mat = pat.matcher(query);
-  
-    return mat.matches();
   }
   
   public String getTableName(String query) {
