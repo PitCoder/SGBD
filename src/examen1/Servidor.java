@@ -47,7 +47,7 @@ public class Servidor {
               bases.put(database.getName(), tables);
            }
             else{
-                bases.put(database.getName(), null); //En caso de que la base de datos no tenga tabla alguna
+                bases.put(database.getName(), new HashMap<>()); //En caso de que la base de datos no tenga tabla alguna
             }
          }
       }
@@ -73,7 +73,28 @@ public class Servidor {
           }     
       }
   }
-    
+  
+  public static void deleteFromData(String path){
+      File loader = new File(path);
+      if(loader.isDirectory()){
+          if(loader.list().length == 0){
+              loader.delete();
+          }
+          else{
+              String files[] = loader.list();
+              for(String temp : files){
+                  deleteFromData(path + "/" + temp);         
+              }
+              
+              if(loader.list().length == 0){
+                  loader.delete();
+              }
+          }
+      }
+      else{
+          loader.delete();
+      }
+  } 
     
   public static void main(String[] args) {
     HashMap <String, HashMap> bases;
@@ -123,12 +144,18 @@ public class Servidor {
             case 1:  /* Se remueve la base de datos del hash map */
               if(se.verifySyntaxDropDatabase(query)){
                 dbName = se.dropDatabase(query);                                  // Se obtiene el nombre de la base con la que se hará la operación.
-              if (bases.remove(dbName) == null) {                               // Si es nulo quiere decir que no hay esa llave; por ende no existe esa base.
-                mensajeAEnviar = "No existe una base de datos con ese nombre";
-              } else {                                                          // Se eliminó bien !.
-                mensajeAEnviar = "Base eliminada satisfctoriamente!";
-              }  
-              
+                if(bases.containsKey(dbName)){
+                      mensajeAEnviar = "Error de Creación:  La base de datos ya existe";
+                }
+                else{
+                   if (bases.remove(dbName) == null) {                               // Si es nulo quiere decir que no hay esa llave; por ende no existe esa base.
+                     mensajeAEnviar = "No existe una base de datos con ese nombre";
+                   } 
+                    else {                                                          // Se eliminó bien !.
+                     deleteFromData("data/" + dbName); //Función generica que permite eliminar desde una tabla hasta una base de datos
+                     mensajeAEnviar = "Base eliminada satisfctoriamente!";
+                  }
+                }
               }
               else{
                   mensajeAEnviar = "Error de Sintaxis: Drop Database";
@@ -136,21 +163,28 @@ public class Servidor {
               break;
             
             case 2:  /* Se pone en baseActual el nombre de la base */
-              dbName = se.useDatabase(query);                                   // Se obtiene el nombre de la base con la que se hará la operación.
-              if (bases.containsKey(dbName)) {                                  // Se verifica que esté la base en el HashMap.
-                baseActual = dbName;                                            // Se pone el nombre actual de la base.
-                mensajeAEnviar = "Base de Datos seleccionada";                  // Se prepara mensaje de éxito.
-              } else {
-                baseActual = null;                                              // Se regresa a nulo si es que se equivocó el usuario.
-                mensajeAEnviar = "No existe base de datos";                     // Se prepara mensaje de error.
+              if(se.verifySyntaxUseDatabase(query)){
+                dbName = se.useDatabase(query);                                   // Se obtiene el nombre de la base con la que se hará la operación.
+                if (bases.containsKey(dbName)) {                                  // Se verifica que esté la base en el HashMap.
+                  baseActual = dbName;                                            // Se pone el nombre actual de la base.
+                  mensajeAEnviar = "Base de Datos seleccionada";                  // Se prepara mensaje de éxito.
+                } else {
+                  baseActual = null;                                              // Se regresa a nulo si es que se equivocó el usuario.
+                  mensajeAEnviar = "No existe la base de datos";                     // Se prepara mensaje de error.
+                }
+              }
+              else{
+                  mensajeAEnviar = "Error de Sintaxis: Use Database";
               }
               break;
             
             case 3: /* Se crea la tabla */
+              if(se.verifySyntaxCreateTable(query)){
               if (baseActual == null) {                                         // Se verifica que ya se haya realizado 'USE DATABASE' con anterioridad.
                 mensajeAEnviar = "No se ha seleccionado base de datos";
-              } else {
-                if (se.verifySyntaxCreateTable(query)) {                        // Se verifica la sintáxis.
+              } 
+              else {
+                if (se.verifySyntaxCreateTable(query)){                        // Se verifica la sintáxis.
                   String tableName = se.getTableName(query);                    // Se tiene el nombre de la tabla
                   boolean f = se.getTableAttributes(query, tableName);          // Se obtienen atributos y se genera objeto dinámicamente.
                  
@@ -175,9 +209,11 @@ public class Servidor {
                       mensajeAEnviar = "Se creo la tabla!";
                     }                    
                   }
-                } else {
-                  mensajeAEnviar = "Error de sintaxis. Verificar";
+                } 
+                else {
+                  mensajeAEnviar = "Error de sintaxis. Create Table";
                 }
+              }
               }
               break;
               
