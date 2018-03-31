@@ -266,6 +266,12 @@ public class Sentencias {
   }
   /* Fin de los métodos de la sentencia CREATE TABLE */
   
+  /* Método de la sentecnia DROP TABLE  */
+  public String getTableNameDrop(String query) {
+    return getNombreBase(query.replaceAll("[\\s]+", " "), "DROP TABLE");
+  }
+  /* Fin del método de la sentencia DROP TABLE */
+  
   /* Métodos de la sentencia INSERT INTO */
   public String getITableName(String query){
       return getNombreTabla(query.replaceAll("[\\s+]", " "), "INSERT INTO");
@@ -362,26 +368,5 @@ public class Sentencias {
       }
       return tupla;
   }
-  
   /*Fin de los métodos de la sentencia INSERT INTO */
-  
-  public String getTableNameDrop(String query) {
-    return getNombreBase(query, "DROP TABLE");
-  }
-  
-  
-  public int showDatabases(String query) {
-    query = query.replace(";", "");
-    if (query.equals("SHOW DATABASES")) {
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-  
-  public boolean showTables(String query) {
-    query = query.replace(";", "");
-    return query.equals("SHOW TABLES");
-  }   
-  
 }

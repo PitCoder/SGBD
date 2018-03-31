@@ -173,7 +173,7 @@ public class Servidor implements java.io.Serializable{
         Socket cl = s.accept();
         System.out.println("Cliente conectado desde: " + cl.getInetAddress());
         /* Invocamos al metodo estático para cargar las bases de datos desde nuestro metadatos */
-          bases = loadFromStorage();
+        bases = loadFromStorage();
         for (;;) {
           ObjectInputStream ois = new ObjectInputStream(cl.getInputStream());
           String query                = (String) ois.readObject();
@@ -210,14 +210,20 @@ public class Servidor implements java.io.Serializable{
                      mensajeAEnviar = "No existe una base de datos con ese nombre";
                 }
                 else{
-                   if (bases.remove(dbName) == null) {                               // Si es nulo quiere decir que no hay esa llave; por ende no existe esa base.
-                       System.out.println("No se pudo eliminar la base de datos");
-                   } 
-                    else {                                                          // Se eliminó bien !.
+                     LinkedHashMap<String, LinkedList> tablasActuales = bases.get(dbName);
+                     if(!tablasActuales.isEmpty()){
+                         Iterator<String> iterator = tablasActuales.keySet().iterator();
+                         while (iterator.hasNext()) {
+                             deleteFromStorage("build/classes/examen1/" + iterator.next() + ".class"); //Se eliminan las clases de la sesion pasada, si es que las hay
+                         }
+                     }
+                     bases.remove(dbName);
                      deleteFromStorage("data/" + dbName); //Función generica que permite eliminar desde una tabla hasta una base de datos
                      deleteFromStorage("metadata/" + dbName); 
                      mensajeAEnviar = "Base eliminada satisfctoriamente!";
-                  }
+                     if(dbName.equals(baseActual)){
+                         baseActual = null;
+                     }
                 }
               }
               else{
@@ -283,19 +289,27 @@ public class Servidor implements java.io.Serializable{
               if (baseActual == null) {
                 mensajeAEnviar = "No se ha seleccionado base de datos";
               } 
-              else {
-                String tableName = se.getTableNameDrop(query);                  // Se obtiene nombre.
-                LinkedHashMap tablasActuales = bases.get(baseActual);                 // Se obtienen las tablas actuales
-                
-                if(tablasActuales.remove(tableName) == null) {                  // No existe tabla con ese nombre.
-                  mensajeAEnviar = "No existe tabla con ese nombre.";
-                } else {
-                  mensajeAEnviar = "Tabla eliminada con éxito!";
+              else{
+                if(se.verifySyntaxDropTable(query)){
+                    String tableName = se.getTableNameDrop(query);                  // Se obtiene nombre.
+                    LinkedHashMap tablasActuales = bases.get(baseActual);        // Se obtienen las tablas actuales
+                    if(tablasActuales.containsKey(tableName)){
+                        tablasActuales.remove(tableName); //Eliminamos dentro del hashmap
+                        deleteFromStorage("build/classes/examen1/" + tableName + ".class");              //Eliminamos de lbuild
+                        deleteFromStorage("data/" + baseActual + "/" + tableName);                           //Eliminamos de data
+                        deleteFromStorage("metadata/" + baseActual + "/" + tableName + ".class");   //Eliminamos de metadata                        
+                        System.out.println("TA: " + tablasActuales);
+                        mensajeAEnviar = "Tabla eliminada exitosamente";
+                    }
+                    else{
+                        mensajeAEnviar = "No existe tabla con ese nombre.";
+                    }
                 }
-                
-                System.out.println("TA: " + tablasActuales);
-              }
-              break;
+                else{
+                    mensajeAEnviar = "Error de sintaxis. Drop Table";
+                }
+             }
+             break;
               
             case 6 : /*Se insertan valores a la tabla */
                 if(baseActual == null){
@@ -330,28 +344,27 @@ public class Servidor implements java.io.Serializable{
                 break;
                 
             case 8: /* Se elimina base de datos */
-              int res = se.showDatabases(query);                                // Se verifica sintaxis.
-              if (res == 0) {                                                   // La sintaxis no es la correcta.
-                mensajeAEnviar = "Sintaxis no correcta. Favor de verificar.";
-              } 
-              else {
-                mensajeAEnviar = printDatabases(bases.keySet());                // Sintaxis correcta -> se imprimen las bases actuales.
-              }
+                if(se.verifySyntaxShowDatabases(query)){
+                    mensajeAEnviar = printDatabases(bases.keySet());    // Sintaxis correcta -> se imprimen las bases actuales.
+                }
+                else{
+                    mensajeAEnviar = "Error de Sintaxis: Show Databases";
+                }
               break;
               
             case 9:
               if (baseActual != null) {
-                if (se.showTables(query)) {                                       // Sintaxis correctas
-                  System.out.println(baseActual);
-                  if(bases.get(baseActual).isEmpty()){
-                      mensajeAEnviar = "No hay tablas almacenadas";
-                  }
-                  else{
-                      mensajeAEnviar = printTables(bases.get(baseActual).keySet());        // Impresión de las tablas
-                  }
-                } 
-                else {
-                  mensajeAEnviar = "Sintaxis no correcta. Favor de verificar.";
+                if(se.verifySyntaxShowTables(query)){
+                    LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
+                    if(tablasActuales.isEmpty()){
+                        mensajeAEnviar = "No hay tablas almacenadas";    
+                    }
+                    else{
+                        mensajeAEnviar = printTables(tablasActuales.keySet());        // Impresión de las tablas
+                    }
+                }
+                else{
+                     mensajeAEnviar = "Error de Sintaxis: Show Tables";
                 }
               } 
               else {
@@ -366,11 +379,13 @@ public class Servidor implements java.io.Serializable{
           /* Se envia respuesta */
           ObjectOutputStream oos  = new ObjectOutputStream(cl.getOutputStream());
           oos.writeObject(mensajeAEnviar);          
-        }
-
-      }
-    } catch (IOException ex) {  ex.printStackTrace();
-    } catch (ClassNotFoundException ex) {      
+         }
+       }
+    } 
+    catch (IOException ex){  
+        ex.printStackTrace();
+    } 
+    catch (ClassNotFoundException ex) {      
     }           
   }
 }
