@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
-public class Servidor {
+public class Servidor implements java.io.Serializable{
  
   public static void serializeDataOut(LinkedList table, String filepath) throws IOException{
     FileOutputStream fos = new FileOutputStream(filepath);
@@ -27,7 +27,7 @@ public class Servidor {
    return table;
  }
       
-  public static HashMap<String, HashMap<String, LinkedList>> loadFromStorage(){
+  public static LinkedHashMap<String, LinkedHashMap<String, LinkedList>> loadFromStorage(){
       /* Cargamos a la carpeta build todas las clases que se generaron de compilaciones anteriores (metadatos de las bases) */
       String mdpath = "metadata/";
       String target = "build/classes/examen1/";
@@ -51,13 +51,13 @@ public class Servidor {
      
       /* Después regresamos toda la información de la carpeta data */
       String dpath = "data/";
-      HashMap<String, HashMap<String, LinkedList>> bases = new HashMap<String, HashMap<String, LinkedList>>();      
+      LinkedHashMap<String, LinkedHashMap<String, LinkedList>> bases = new LinkedHashMap<String, LinkedHashMap<String, LinkedList>>();      
       File dloader = new File(dpath);
       
       for(File database: dloader.listFiles()){
          if(database.isDirectory()){
             if(database.list().length > 0){   
-              HashMap<String, LinkedList> tables = new HashMap<String, LinkedList>(); 
+              LinkedHashMap<String, LinkedList> tables = new LinkedHashMap<String, LinkedList>(); 
               for(File table: database.listFiles()){
                   try{
                     tables.put(table.getName(), serializeDataIn(dpath + database.getName() + "/" + table.getName()));
@@ -69,7 +69,7 @@ public class Servidor {
               bases.put(database.getName(), tables);
            }
             else{
-                HashMap<String, LinkedList> tables = new HashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
+                LinkedHashMap<String, LinkedList> tables = new LinkedHashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
                 bases.put(database.getName(), tables); //En caso de que la base de datos no tenga tabla alguna
             }
          }
@@ -98,7 +98,7 @@ public class Servidor {
       }
   } 
 
-  public static void saveDB(HashMap<String, HashMap<String, LinkedList>> bases){
+  public static void saveDB(LinkedHashMap<String, LinkedHashMap<String, LinkedList>> bases){
       String datapath = "data/";
       String metadatapath = "metadata/";
       File loader = new File(datapath);     
@@ -160,7 +160,7 @@ public class Servidor {
   }
     
   public static void main(String[] args) {
-   HashMap <String, HashMap<String, LinkedList>> bases;
+   LinkedHashMap <String, LinkedHashMap<String, LinkedList>> bases;
    String baseActual = null;
    String dbName;
    
@@ -192,8 +192,8 @@ public class Servidor {
                       mensajeAEnviar = "Error de Creación:  La base de datos ya existe";
                   }
                   else{
-                    HashMap <String, LinkedList> base = new HashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
-                    bases.put(dbName, base);                                                             // Se añade al HashMap bases los datos obtenidos anteriormente.
+                    LinkedHashMap <String, LinkedList> base = new LinkedHashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
+                    bases.put(dbName, base);                                                             // Se añade al LinkedHashMap bases los datos obtenidos anteriormente.
                     saveDB(bases);
                     mensajeAEnviar = "Base de datos creada satisfactoriamente";       // Se envía un mensaje de que se creo de manera correcta.
                   }   
@@ -228,7 +228,7 @@ public class Servidor {
             case 2:  /* Se pone en baseActual el nombre de la base */
               if(se.verifySyntaxUseDatabase(query)){
                 dbName = se.useDatabase(query);                                   // Se obtiene el nombre de la base con la que se hará la operación.
-                if (bases.containsKey(dbName)) {                                  // Se verifica que esté la base en el HashMap.
+                if (bases.containsKey(dbName)) {                                  // Se verifica que esté la base en el LinkedHashMap.
                   baseActual = dbName;                                            // Se pone el nombre actual de la base.
                   mensajeAEnviar = "Base de Datos seleccionada";                  // Se prepara mensaje de éxito.
                 } 
@@ -257,14 +257,14 @@ public class Servidor {
                   } 
                   else {                  
                     /* Se obtiene el hashmap con las tablas ya creadas */
-                    HashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
+                    LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                     if (tablasActuales.containsKey(tableName)) {                // Ya está esa tabla
                       mensajeAEnviar = "Error: Ya existe una tabla con el mismo nombre.";
                     } 
                     else {
                       /* Se añade la tabla al hashmap (En este paso ya debería estar la instancia de la clase */                      
-                      DynamicCompiler dc  = new DynamicCompiler();
-                      Object tabla  = dc.getInstance(tableName);
+                      //DynamicCompiler dc  = new DynamicCompiler();
+                      //Object tabla  = dc.getInstance(tableName);
                       LinkedList<Object> linkedList = new LinkedList<>();
                       tablasActuales.put(tableName, linkedList);
                       saveTable(tablasActuales.get(tableName), baseActual, tableName);
@@ -285,7 +285,7 @@ public class Servidor {
               } 
               else {
                 String tableName = se.getTableNameDrop(query);                  // Se obtiene nombre.
-                HashMap tablasActuales = bases.get(baseActual);                 // Se obtienen las tablas actuales
+                LinkedHashMap tablasActuales = bases.get(baseActual);                 // Se obtienen las tablas actuales
                 
                 if(tablasActuales.remove(tableName) == null) {                  // No existe tabla con ese nombre.
                   mensajeAEnviar = "No existe tabla con ese nombre.";
@@ -305,21 +305,18 @@ public class Servidor {
                     if(se.verifySyntaxInsertInto(query)){
                         String tableName = se.getITableName(query);
                         System.out.println(tableName);
-                        HashMap tablasActuales = bases.get(baseActual);
+                        LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                         if(tablasActuales.containsKey(tableName)){
-                            if(se.verifyInsertedValues(query, tableName)){
-                                mensajeAEnviar = "Valores correctos insertados en orden correcto";
+                            Object tupla = se.verifyInsertedValues(query, tableName);
+                            if(tupla!=null){
+                                LinkedList<Object> tuplas = tablasActuales.get(tableName);
+                                tuplas.add(tupla);
+                                saveTable(tablasActuales.get(tableName), baseActual, tableName);
+                                mensajeAEnviar = "Los valores se ha insertado correctamente";
                             }
                             else{
                                 mensajeAEnviar = "Error: Los valores no coinciden con los definidos en la tabla.";
                             }
-                            // Se obtienen atributos y se genera objeto dinámicamente.      
-//                            if (!se.getTableValues(query, tableName)){                                                     // Nombres duplicados.
-//                              
-//                            }
-//                            else{
-//                                mensajeAEnviar = "Valores insertados exitosamente";
-//                            }
                         }
                         else{
                             mensajeAEnviar = "No existe tabla con ese nombre";

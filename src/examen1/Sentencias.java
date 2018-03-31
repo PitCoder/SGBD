@@ -2,7 +2,7 @@ package examen1;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -147,7 +147,7 @@ public class Sentencias {
   }
   
   /* Generador del codigo del objecto tabla */
-  private StringBuilder codeGeneration(String className, HashMap<String, String> attr) {
+  private StringBuilder codeGeneration(String className, LinkedHashMap<String, String> attr) {
     StringBuilder code = new StringBuilder();    
     Set<String> attrNames = attr.keySet();
     Iterator<String> iterator = attrNames.iterator();
@@ -155,7 +155,7 @@ public class Sentencias {
     /* Generación del código */
     code.append("package examen1;\n");
     code.append("import java.util.ArrayList;\n");
-    code.append("public class ").append(className).append(" {\n");   
+    code.append("public class ").append(className).append(" implements java.io.Serializable{\n");   
     
     /* Declaración de variables */
     while (iterator.hasNext()) {
@@ -229,7 +229,7 @@ public class Sentencias {
     String[] attrs = attr.split(",");                                           // Se obtienen todos los atributos con su tipo de variable.
     
     /* Se obtienen los campos ingresados */
-    HashMap<String, String> atts = new HashMap<>();
+    LinkedHashMap<String, String> atts = new LinkedHashMap<>();
     for(String at: attrs) {
       at = at.trim();   //Se eliminan los espacios al principio y al final de cada atributo, dejando unicamente un espacio entre el tipo y el valor
       String parts[] = at.split(" ");
@@ -239,7 +239,7 @@ public class Sentencias {
         return false;
       } 
       else {
-        atts.put(parts[0], parts[1]);  // Se ponen los campos en el HashMap
+        atts.put(parts[0], parts[1]);  // Se ponen los campos en el LinkedHashMap
       }
     }
     
@@ -291,40 +291,76 @@ public class Sentencias {
       return type;
   }
   
-  public boolean verifyInsertedValues(String query, String tableName){
-      boolean retrieve = false;
+  private Class getClass(String value){
+      Class c;
+      switch (value) {
+          case "String":
+              c = String.class;
+              break;
+          case "int":
+              c = int.class;
+              break;
+          case "double":
+              c = double.class;
+              break;
+          default:
+              c = char.class;
+              break;
+      }
+      return c;    
+  }
+  
+  public Object verifyInsertedValues(String query, String tableName){
       DynamicCompiler dc = new DynamicCompiler();
-      Object tabla = dc.getInstance(tableName);
+      Object tupla = dc.getInstance(tableName);
       try{
-          System.out.println(tabla.getClass().getName());
-          Method[] methods = tabla.getClass().getMethods();
+          System.out.println(tupla.getClass().getName());
+          Method[] methods = tupla.getClass().getMethods();
           for (Method method : methods) {
               System.out.println(method.getName());
           }
-          Method method  = tabla.getClass().getMethod("getTypes", null);
+          Method method  = tupla.getClass().getMethod("getTypes", null);
           System.out.println("method = " + method.toString());
-          ArrayList<String> pairs = (ArrayList<String>) method.invoke(tabla, null);
+          ArrayList<String> pairs = (ArrayList<String>) method.invoke(tupla, null);
           System.out.println("Success");
           
           String rvals = query.substring(query.indexOf("(") + 1, query.indexOf(")"));
           String[] vals = rvals.split(",");
           if(pairs.size() == vals.length){
-              String type;
+              String[] pair;
+              String val, valtype;
+              Method setter;
               for(int i=0;i < pairs.size(); i++){
-                  String val = vals[i].trim();
-                  String valtype = getValType(val);
-                  if(!valtype.equals(pairs.get(i).split(",")[1])){
-                      return  retrieve;
+                  pair = pairs.get(i).split(",");
+                  val = vals[i].trim();
+                  valtype = getValType(val);
+                  if(!valtype.equals(pair[1])){
+                      return  null;
                   }
-                  type = pairs.get(i);
+                setter = tupla.getClass().getMethod("set" + pair[0], getClass(pair[1]));
+                
+                switch (valtype) {
+                      case "String":
+                          setter.invoke(tupla, val);
+                          break;
+                      case "int":
+                          setter.invoke(tupla, Integer.parseInt(val));
+                          break;
+                      case "double":
+                          setter.invoke(tupla, Double.parseDouble(val));
+                          break;
+                      default:
+                          setter.invoke(tupla, val.charAt(0));
+                          break;
+                  }
               }
-              retrieve = true;
           }            
       }
       catch(Exception e){
           e.printStackTrace();
+          tupla = null;
       }
-      return retrieve;
+      return tupla;
   }
   
   /*Fin de los métodos de la sentencia INSERT INTO */
