@@ -2,8 +2,10 @@ package examen1;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,7 +89,7 @@ public class Sentencias {
   }
   
   public boolean verifySyntaxInsertInto(String query){
-      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([.0-9_A-Z$]+)([\\s]*[,][\\s]*[.0-9_A-Z$]+)*[)])[\\s]*[;][\\s]*";
+      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([.0-9_a-z A-Z$]+)([\\s]*[,][\\s]*[.0-9_a-z A-Z$]+)*[)])[\\s]*[;][\\s]*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -110,6 +112,14 @@ public class Sentencias {
   
   public boolean verifySyntaxShowTables(String query){
       String regex = "[\\s]*(SHOW)[\\s]+(TABLES)[\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      boolean result = matcher.matches();
+      return matcher.matches();
+  }
+  
+  public boolean verifyReservedWord(String query){
+      String regex = "((CREATE)|(DATABASE)|(DROP)|(USE)|(TABLE)|(SELECT)|(INSERT)|(INTO)|(FROM)|(UPDATE)|(DESC)|(SHOW)|(DATABASES)|(TABLES)|(WHERE)|(ALL))";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       boolean result = matcher.matches();
@@ -138,6 +148,17 @@ public class Sentencias {
       }
       else if(query.contains("SET")){
           tableName = tableName.substring(0,tableName.indexOf(" "));
+      }
+      else if (query.contains("FROM")){
+          tableName = tableName.substring(tableName.indexOf(" FROM ") + 5, tableName.length());
+          System.out.println(tableName);
+          if(tableName.contains("WHERE")){
+              tableName = tableName.substring(0, tableName.indexOf(" "));
+          }
+          else{
+              tableName = tableName.substring(0, tableName.indexOf(";"));
+              tableName = tableName.trim();
+          }
       }
       else{
           tableName = tableName.replaceFirst(" ", "");
@@ -171,11 +192,11 @@ public class Sentencias {
       String key = iterator.next();
       String virtualType = attr.get(key);
       String realType = getRealType(virtualType);
-      code.append("public ").append(realType).append(" get").append(key).append(" () {\n return this.").append(key).append(";}\n");
+      code.append("public ").append(realType).append(" get_").append(key).append(" () {\n return this.").append(key).append(";}\n");
     }
     
     /* Getter especializado en regresar un array de strings con el nombre de los tipos de los atributos */
-    code.append("public ").append("ArrayList<String> ").append(" getTypes () {\n ArrayList<String> types = new ArrayList<>();\n");
+    code.append("public ").append("ArrayList<String> ").append(" extractTypes () {\n ArrayList<String> types = new ArrayList<>();\n");
     iterator = attrNames.iterator();
     ArrayList<String> types = new ArrayList<>();
     while (iterator.hasNext()){
@@ -266,11 +287,81 @@ public class Sentencias {
   }
   /* Fin de los métodos de la sentencia CREATE TABLE */
   
-  /* Método de la sentecnia DROP TABLE  */
+  /* Método de la sentencia DROP TABLE  */
   public String getTableNameDrop(String query) {
     return getNombreBase(query.replaceAll("[\\s]+", " "), "DROP TABLE");
   }
   /* Fin del método de la sentencia DROP TABLE */
+  
+  /* Métodos de la sentencia SELECT */
+  public String getSTableName(String query){
+      return getNombreTabla(query.replaceAll("[\\s]+", " "), "SELECT");
+  }
+  
+  public ArrayList<String> extractQueryAttributes(String query){
+      ArrayList<String> attributes = new ArrayList<>();
+      String newquery = query.replaceAll("[\\s]+"," ").trim();
+      newquery = newquery.replace("SELECT ", "");
+      newquery = newquery.substring(0,newquery.indexOf(" FROM "));
+      if(newquery.startsWith("ALL")){
+          attributes.add("ALL");
+      }
+      else{
+          String atts[] = newquery.split(",");
+          for(String att : atts){
+              att = att.trim();
+              attributes.add(att);
+          }
+      }
+      return attributes;
+  }
+  
+  public String invokeAllGetters(LinkedList<Object> tuples, String tableName){
+      DynamicCompiler dc = new DynamicCompiler();
+      Object tupla = dc.getInstance(tableName);
+      String resultSet = "";
+      try{
+          System.out.println(tupla.getClass().getName());
+          Method[] methods = tupla.getClass().getMethods();
+          ArrayList<String> getters = new ArrayList<>();
+          for (Method method : methods){
+              String methodName = method.getName();
+              if(methodName.contains("get_")){
+                  getters.add(methodName);
+                  resultSet = resultSet + methodName.replace("get_", "");
+                  resultSet = resultSet + "\t";
+              }
+          }
+          resultSet = resultSet + "\n";
+          
+          for(int i=0;i<tuples.size();i++){
+            Object tuple = tuples.get(i);
+            Method method;
+            for(int j=0;j<getters.size();j++){
+               method = tuple.getClass().getMethod(getters.get(j),null);
+               if(method.getReturnType().equals(int.class)){
+                   resultSet = resultSet + Integer.toString((int)method.invoke(tuple, null));
+               }
+               else if(method.getReturnType().equals(double.class)){
+                   resultSet = resultSet + Double.toString((double)method.invoke(tuple, null));
+               }
+               else if(method.getReturnType().equals(char.class)){
+                   resultSet = resultSet  + String.valueOf((char)method.invoke(tuple, null));
+               }
+               else{
+                   resultSet = resultSet + (String)method.invoke(tuple, null);
+               }
+               resultSet =  resultSet + ",";
+            }
+            resultSet = resultSet + "\n";
+          }
+      }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+      return resultSet;
+  }
+  /* Fin de los métodos de la sentencia SELECT */
   
   /* Métodos de la sentencia INSERT INTO */
   public String getITableName(String query){
@@ -325,7 +416,7 @@ public class Sentencias {
           for (Method method : methods) {
               System.out.println(method.getName());
           }
-          Method method  = tupla.getClass().getMethod("getTypes", null);
+          Method method  = tupla.getClass().getMethod("extractTypes", null);
           System.out.println("method = " + method.toString());
           ArrayList<String> pairs = (ArrayList<String>) method.invoke(tupla, null);
           System.out.println("Success");

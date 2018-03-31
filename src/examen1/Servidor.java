@@ -187,16 +187,21 @@ public class Servidor implements java.io.Serializable{
           switch(a) {
             case 0:   /* Se crea la base de datos -> se pone en el hash map */
               if(se.verifySyntaxCreateDatabase(query)){
-                  dbName = se.createDatabase(query);                                            // Se obtiene el nombre de la base con la que se hará la operación. 
-                  if(bases.containsKey(dbName)){
-                      mensajeAEnviar = "Error de Creación:  La base de datos ya existe";
+                  dbName = se.createDatabase(query);                                            // Se obtiene el nombre de la base con la que se hará la operación.
+                  if(!se.verifyReservedWord(dbName)){
+                    if(bases.containsKey(dbName)){
+                        mensajeAEnviar = "Error de Creación:  La base de datos ya existe";
+                    }
+                    else{
+                      LinkedHashMap <String, LinkedList> base = new LinkedHashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
+                      bases.put(dbName, base);                                                             // Se añade al LinkedHashMap bases los datos obtenidos anteriormente.
+                      saveDB(bases);
+                      mensajeAEnviar = "Base de datos creada satisfactoriamente";       // Se envía un mensaje de que se creo de manera correcta.
+                    }                     
                   }
                   else{
-                    LinkedHashMap <String, LinkedList> base = new LinkedHashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
-                    bases.put(dbName, base);                                                             // Se añade al LinkedHashMap bases los datos obtenidos anteriormente.
-                    saveDB(bases);
-                    mensajeAEnviar = "Base de datos creada satisfactoriamente";       // Se envía un mensaje de que se creo de manera correcta.
-                  }   
+                      mensajeAEnviar = "Error de Creación: No se puede usar una palabra reservada";
+                  }
               }
               else{
                   mensajeAEnviar = "Error de Sintaxis: Create Database";
@@ -205,7 +210,7 @@ public class Servidor implements java.io.Serializable{
             
             case 1:  /* Se remueve la base de datos del hash map */
               if(se.verifySyntaxDropDatabase(query)){
-                dbName = se.dropDatabase(query);                                  // Se obtiene el nombre de la base con la que se hará la operación.
+                dbName = se.dropDatabase(query);    // Se obtiene el nombre de la base con la que se hará la operación.
                 if(!bases.containsKey(dbName)){
                      mensajeAEnviar = "No existe una base de datos con ese nombre";
                 }
@@ -256,27 +261,32 @@ public class Servidor implements java.io.Serializable{
                 if (se.verifySyntaxCreateTable(query)){                        // Se verifica la sintáxis.
                   String tableName = se.getTableName(query);                    // Se tiene el nombre de la tabla
                   System.out.println(baseActual);
-                  System.out.println(tableName);   
-                 // Se obtienen atributos y se genera objeto dinámicamente.
-                  if (!se.getTableAttributes(query, tableName)){                                                     // Nombres duplicados.
-                    mensajeAEnviar = "Error: Nombres duplicados en atributos.";
-                  } 
-                  else {                  
-                    /* Se obtiene el hashmap con las tablas ya creadas */
-                    LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
-                    if (tablasActuales.containsKey(tableName)) {                // Ya está esa tabla
-                      mensajeAEnviar = "Error: Ya existe una tabla con el mismo nombre.";
+                  System.out.println(tableName);
+                  if(!se.verifyReservedWord(tableName)){
+                    // Se obtienen atributos y se genera objeto dinámicamente.
+                    if (!se.getTableAttributes(query, tableName)){                                                     // Nombres duplicados.
+                      mensajeAEnviar = "Error: Nombres duplicados en atributos.";
                     } 
-                    else {
-                      /* Se añade la tabla al hashmap (En este paso ya debería estar la instancia de la clase */                      
-                      //DynamicCompiler dc  = new DynamicCompiler();
-                      //Object tabla  = dc.getInstance(tableName);
-                      LinkedList<Object> linkedList = new LinkedList<>();
-                      tablasActuales.put(tableName, linkedList);
-                      saveTable(tablasActuales.get(tableName), baseActual, tableName);
-                      System.out.println("TA: " + tablasActuales);
-                      mensajeAEnviar = "Se creo la tabla " + tableName;
-                    }                    
+                    else {                  
+                      /* Se obtiene el hashmap con las tablas ya creadas */
+                      LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
+                      if (tablasActuales.containsKey(tableName)) {                // Ya está esa tabla
+                        mensajeAEnviar = "Error: Ya existe una tabla con el mismo nombre.";
+                      } 
+                      else {
+                        /* Se añade la tabla al hashmap (En este paso ya debería estar la instancia de la clase */                      
+                        //DynamicCompiler dc  = new DynamicCompiler();
+                        //Object tabla  = dc.getInstance(tableName);
+                        LinkedList<Object> linkedList = new LinkedList<>();
+                        tablasActuales.put(tableName, linkedList);
+                        saveTable(tablasActuales.get(tableName), baseActual, tableName);
+                        System.out.println("TA: " + tablasActuales);
+                        mensajeAEnviar = "Se creo la tabla " + tableName;
+                      }                    
+                    }
+                  }
+                  else{
+                      mensajeAEnviar = "Error de Creación: No se puede usar una palabra reservada";
                   }
                 }   
                 else {
@@ -310,7 +320,40 @@ public class Servidor implements java.io.Serializable{
                 }
              }
              break;
-              
+             
+            case 5: /* Realizamos una consulta a la tabla */
+                if(baseActual == null){
+                    mensajeAEnviar = "No se ha seleccioando base de datos";
+                }
+                else{
+                    if(se.verifySyntaxSelect(query)){
+                        String tableName = se.getSTableName(query);
+                        LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
+                        if(tablasActuales.containsKey(tableName)){
+                        ArrayList<String> parameters = se.extractQueryAttributes(query);
+                        if(parameters.get(0).equals("ALL")){
+                            LinkedList<Object> tuplas = tablasActuales.get(tableName);
+                            mensajeAEnviar = se.invokeAllGetters(tuplas, tableName);
+                            
+                        }
+//                            if(parameters.get(0).equals("ALL")){
+//                                LinkedList<Object> tuplas = tablasActuales.get(tableName);
+//                                se.invokeGetters(tuplas, tableName);
+//                            }
+//                            else{
+//                                System.out.println("Extraemos unicamente los atributos");
+//                            }
+                        }
+                        else{
+                            mensajeAEnviar = "No existe tabla con ese nombre.";
+                        }
+                    }
+                    else{
+                        mensajeAEnviar = "Error de sintaxis. Select";
+                    }
+                }
+                break;
+                
             case 6 : /*Se insertan valores a la tabla */
                 if(baseActual == null){
                     mensajeAEnviar =  "No se ha seleccionado base de datos";
