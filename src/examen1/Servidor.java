@@ -1,16 +1,16 @@
 package examen1;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
+import java.util.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class Servidor {
+ 
   public static void serializeDataOut(LinkedList table, String filepath) throws IOException{
     FileOutputStream fos = new FileOutputStream(filepath);
       try (ObjectOutputStream oos = new ObjectOutputStream(fos)) {
@@ -27,18 +27,40 @@ public class Servidor {
    return table;
  }
       
-  public static HashMap<String, HashMap> loadFromData(){
-      String path = "data/";
-      HashMap<String, HashMap> bases = new HashMap<>();      
-      File loader = new File(path);
-      
-      for(File database: loader.listFiles()){
-         if(database.isDirectory()){
+  public static HashMap<String, HashMap<String, LinkedList>> loadFromStorage(){
+      /* Cargamos a la carpeta build todas las clases que se generaron de compilaciones anteriores (metadatos de las bases) */
+      String mdpath = "metadata/";
+      String target = "build/classes/examen1/";
+      File mdloader = new File(mdpath);
+      for(File database: mdloader.listFiles()){
+        if(database.isDirectory()){
+        //Contiene al menos una tabla
             if(database.list().length > 0){   
-              HashMap<String, LinkedList> tables = new HashMap<>(); 
               for(File table: database.listFiles()){
                   try{
-                    tables.put(table.getName(), serializeDataIn(path + database.getName() + "/" + table.getName()));
+                      File ftarget = new File(target + table.getName());
+                      Files.copy(table.toPath(), ftarget.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                  }
+                  catch(Exception e){
+                      e.printStackTrace();
+                  }
+              }
+            }
+         }
+      }
+     
+      /* Después regresamos toda la información de la carpeta data */
+      String dpath = "data/";
+      HashMap<String, HashMap<String, LinkedList>> bases = new HashMap<String, HashMap<String, LinkedList>>();      
+      File dloader = new File(dpath);
+      
+      for(File database: dloader.listFiles()){
+         if(database.isDirectory()){
+            if(database.list().length > 0){   
+              HashMap<String, LinkedList> tables = new HashMap<String, LinkedList>(); 
+              for(File table: database.listFiles()){
+                  try{
+                    tables.put(table.getName(), serializeDataIn(dpath + database.getName() + "/" + table.getName()));
                   }
                   catch(Exception e){
                       e.printStackTrace();
@@ -47,34 +69,15 @@ public class Servidor {
               bases.put(database.getName(), tables);
            }
             else{
-                bases.put(database.getName(), new HashMap<>()); //En caso de que la base de datos no tenga tabla alguna
+                HashMap<String, LinkedList> tables = new HashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
+                bases.put(database.getName(), tables); //En caso de que la base de datos no tenga tabla alguna
             }
          }
       }
       return bases;
   }
-
-  public static void saveDBToData(HashMap<String, HashMap> bases){
-      String path = "data/";
-      File loader = new File(path);     
-      Collection<String> oldbases = new ArrayList(Arrays.asList(loader.list()));
-      Collection<String> newbases = new ArrayList<>(bases.keySet());
-      
-      List<String> destinationList = new ArrayList<>(newbases);
-      destinationList.removeAll(oldbases);
-      
-      for(int i=0; i < destinationList.size(); i++){
-          File base = new File(path + destinationList.get(i));
-          try{
-              base.mkdir();
-          }
-          catch(Exception e){
-              e.printStackTrace();
-          }     
-      }
-  }
   
-  public static void deleteFromData(String path){
+  public static void deleteFromStorage(String path){
       File loader = new File(path);
       if(loader.isDirectory()){
           if(loader.list().length == 0){
@@ -83,9 +86,8 @@ public class Servidor {
           else{
               String files[] = loader.list();
               for(String temp : files){
-                  deleteFromData(path + "/" + temp);         
-              }
-              
+                  deleteFromStorage(path + "/" + temp);         
+              }     
               if(loader.list().length == 0){
                   loader.delete();
               }
@@ -95,12 +97,73 @@ public class Servidor {
           loader.delete();
       }
   } 
+
+  public static void saveDB(HashMap<String, HashMap<String, LinkedList>> bases){
+      String datapath = "data/";
+      String metadatapath = "metadata/";
+      File loader = new File(datapath);     
+      Collection<String> oldbases = new ArrayList(Arrays.asList(loader.list()));
+      Collection<String> newbases = new ArrayList<>(bases.keySet());
+      
+      List<String> destinationList = new ArrayList<>(newbases);
+      destinationList.removeAll(oldbases);
+      
+      for(int i=0; i < destinationList.size(); i++){
+          File dbase = new File(datapath + destinationList.get(i));
+          File mdbase = new File(metadatapath + destinationList.get(i));
+          try{
+              dbase.mkdir();
+              mdbase.mkdir();
+          }
+          catch(Exception e){
+              e.printStackTrace();
+          }     
+      }
+  }
+  
+  public static void saveTable(LinkedList table, String dbname, String tablename) throws IOException{
+      /* Primero almacenamos el linked list (información que contiene la tabla) */
+      String dpath = "data/" + dbname + "/" + tablename;
+      serializeDataOut(table, dpath);
+      
+      String mdpath = "metadata/" + dbname + "/" + tablename + ".class";
+      File target = new File(mdpath);
+      Path source = Paths.get("build/classes/examen1/"+ tablename + ".class");
+      try{
+          Files.copy(source, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+  }
+  
+  private static String printDatabases(Set <String> dataBasesNames) {
+    String text = ".:: Bases de Datos ::. \n";
+    Iterator<String> iterator = dataBasesNames.iterator();
+    
+    while (iterator.hasNext()) {
+      text += "- " + iterator.next() + "\n";
+    }
+    
+    return text;
+  }
+  
+  private static String printTables(Set <String> tableNames) {
+    String text = ".:: Tablas de la Base ::. \n";
+    Iterator<String> iterator = tableNames.iterator();
+    
+    while (iterator.hasNext()) {
+      text += "- " + iterator.next() + "\n";
+    }
+    
+    return text;    
+  }
     
   public static void main(String[] args) {
-    HashMap <String, HashMap> bases;
-    String baseActual = null;
-    String dbName;
-    
+   HashMap <String, HashMap<String, LinkedList>> bases;
+   String baseActual = null;
+   String dbName;
+   
     try {
       /* Envio los datos */
       ServerSocket s = new ServerSocket(9000);
@@ -109,6 +172,8 @@ public class Servidor {
       for (;;) {              
         Socket cl = s.accept();
         System.out.println("Cliente conectado desde: " + cl.getInetAddress());
+        /* Invocamos al metodo estático para cargar las bases de datos desde nuestro metadatos */
+          bases = loadFromStorage();
         for (;;) {
           ObjectInputStream ois = new ObjectInputStream(cl.getInputStream());
           String query                = (String) ois.readObject();
@@ -118,10 +183,7 @@ public class Servidor {
           Sentencias se = new Sentencias();
           int a = se.getTipoSentencia(query);    
           String mensajeAEnviar = "";
-          
-          /* Invocamos al metodo estático para cargar las bases de datos desde nuestro metadatos */
-          bases = loadFromData();
-          
+
           switch(a) {
             case 0:   /* Se crea la base de datos -> se pone en el hash map */
               if(se.verifySyntaxCreateDatabase(query)){
@@ -130,9 +192,9 @@ public class Servidor {
                       mensajeAEnviar = "Error de Creación:  La base de datos ya existe";
                   }
                   else{
-                    HashMap <String, LinkedList> base = new HashMap<>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
+                    HashMap <String, LinkedList> base = new HashMap<String, LinkedList>();             // Se crea una instancia de HM, que contentra nombre de tabla y Lista de Objetos
                     bases.put(dbName, base);                                                             // Se añade al HashMap bases los datos obtenidos anteriormente.
-                    saveDBToData(bases);
+                    saveDB(bases);
                     mensajeAEnviar = "Base de datos creada satisfactoriamente";       // Se envía un mensaje de que se creo de manera correcta.
                   }   
               }
@@ -144,15 +206,16 @@ public class Servidor {
             case 1:  /* Se remueve la base de datos del hash map */
               if(se.verifySyntaxDropDatabase(query)){
                 dbName = se.dropDatabase(query);                                  // Se obtiene el nombre de la base con la que se hará la operación.
-                if(bases.containsKey(dbName)){
-                      mensajeAEnviar = "Error de Creación:  La base de datos ya existe";
+                if(!bases.containsKey(dbName)){
+                     mensajeAEnviar = "No existe una base de datos con ese nombre";
                 }
                 else{
                    if (bases.remove(dbName) == null) {                               // Si es nulo quiere decir que no hay esa llave; por ende no existe esa base.
-                     mensajeAEnviar = "No existe una base de datos con ese nombre";
+                       System.out.println("No se pudo eliminar la base de datos");
                    } 
                     else {                                                          // Se eliminó bien !.
-                     deleteFromData("data/" + dbName); //Función generica que permite eliminar desde una tabla hasta una base de datos
+                     deleteFromStorage("data/" + dbName); //Función generica que permite eliminar desde una tabla hasta una base de datos
+                     deleteFromStorage("metadata/" + dbName); 
                      mensajeAEnviar = "Base eliminada satisfctoriamente!";
                   }
                 }
@@ -168,7 +231,8 @@ public class Servidor {
                 if (bases.containsKey(dbName)) {                                  // Se verifica que esté la base en el HashMap.
                   baseActual = dbName;                                            // Se pone el nombre actual de la base.
                   mensajeAEnviar = "Base de Datos seleccionada";                  // Se prepara mensaje de éxito.
-                } else {
+                } 
+                else {
                   baseActual = null;                                              // Se regresa a nulo si es que se equivocó el usuario.
                   mensajeAEnviar = "No existe la base de datos";                     // Se prepara mensaje de error.
                 }
@@ -179,41 +243,39 @@ public class Servidor {
               break;
             
             case 3: /* Se crea la tabla */
-              if(se.verifySyntaxCreateTable(query)){
               if (baseActual == null) {                                         // Se verifica que ya se haya realizado 'USE DATABASE' con anterioridad.
                 mensajeAEnviar = "No se ha seleccionado base de datos";
               } 
               else {
                 if (se.verifySyntaxCreateTable(query)){                        // Se verifica la sintáxis.
                   String tableName = se.getTableName(query);                    // Se tiene el nombre de la tabla
-                  boolean f = se.getTableAttributes(query, tableName);          // Se obtienen atributos y se genera objeto dinámicamente.
-                 
-                  if (!f) {                                                     // Nombres duplicados.
+                  System.out.println(baseActual);
+                  System.out.println(tableName);   
+                 // Se obtienen atributos y se genera objeto dinámicamente.
+                  if (!se.getTableAttributes(query, tableName)){                                                     // Nombres duplicados.
                     mensajeAEnviar = "Error: Nombres duplicados en atributos.";
-                  } else {                  
+                  } 
+                  else {                  
                     /* Se obtiene el hashmap con las tablas ya creadas */
-                    HashMap tablasActuales = bases.get(baseActual);
-                      
+                    HashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                     if (tablasActuales.containsKey(tableName)) {                // Ya está esa tabla
                       mensajeAEnviar = "Error: Ya existe una tabla con el mismo nombre.";
-                    } else {
+                    } 
+                    else {
                       /* Se añade la tabla al hashmap (En este paso ya debería estar la instancia de la clase */                      
                       DynamicCompiler dc  = new DynamicCompiler();
-                      Object tabla        = dc.getInstance(tableName);                      
-                      LinkedList<Object> linkedList = new LinkedList<>();                      
-                      
-                      tablasActuales.put(tableName, linkedList);                     // Se pone 
-                      bases.put(baseActual, tablasActuales);
-                      
+                      Object tabla  = dc.getInstance(tableName);                      
+                      LinkedList<Object> linkedList = new LinkedList<>();
+                      tablasActuales.put(tableName, linkedList);
+                      saveTable(tablasActuales.get(tableName), baseActual, tableName);
                       System.out.println("TA: " + tablasActuales);
-                      mensajeAEnviar = "Se creo la tabla!";
+                      mensajeAEnviar = "Se creo la tabla " + tableName;
                     }                    
                   }
-                } 
+                }   
                 else {
                   mensajeAEnviar = "Error de sintaxis. Create Table";
                 }
-              }
               }
               break;
               
@@ -238,20 +300,28 @@ public class Servidor {
               int res = se.showDatabases(query);                                // Se verifica sintaxis.
               if (res == 0) {                                                   // La sintaxis no es la correcta.
                 mensajeAEnviar = "Sintaxis no correcta. Favor de verificar.";
-              } else {
+              } 
+              else {
                 mensajeAEnviar = printDatabases(bases.keySet());                // Sintaxis correcta -> se imprimen las bases actuales.
               }
               break;
               
             case 9:
               if (baseActual != null) {
-                if (se.showTables(query)) {                                       // Sintaxis correcta
-                  HashMap tablasActuales = bases.get(baseActual);               // Se obtienen las tablas actuales.
-                  mensajeAEnviar = printTables(tablasActuales.keySet());        // Impresión de las tablas
-                } else {
+                if (se.showTables(query)) {                                       // Sintaxis correctas
+                  System.out.println(baseActual);
+                  if(bases.get(baseActual).isEmpty()){
+                      mensajeAEnviar = "No hay tablas almacenadas";
+                  }
+                  else{
+                      mensajeAEnviar = printTables(bases.get(baseActual).keySet());        // Impresión de las tablas
+                  }
+                } 
+                else {
                   mensajeAEnviar = "Sintaxis no correcta. Favor de verificar.";
                 }
-              } else {
+              } 
+              else {
                 mensajeAEnviar = "No se ha seleccionado base de datos";
               }
               break;
@@ -269,27 +339,5 @@ public class Servidor {
     } catch (IOException ex) {  ex.printStackTrace();
     } catch (ClassNotFoundException ex) {      
     }           
-  }
-  
-  private static String printDatabases(Set <String> dataBasesNames) {
-    String text = ".:: Bases de Datos ::. \n";
-    Iterator<String> iterator = dataBasesNames.iterator();
-    
-    while (iterator.hasNext()) {
-      text += "- " + iterator.next() + "\n";
-    }
-    
-    return text;
-  }
-  
-  private static String printTables(Set <String> tableNames) {
-    String text = ".:: Tablas de la Base ::. \n";
-    Iterator<String> iterator = tableNames.iterator();
-    
-    while (iterator.hasNext()) {
-      text += "- " + iterator.next() + "\n";
-    }
-    
-    return text;    
   }
 }

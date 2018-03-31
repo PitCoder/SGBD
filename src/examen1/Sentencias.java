@@ -66,7 +66,7 @@ public class Sentencias {
   }
   
   public boolean verifySyntaxCreateTable(String query) { 
-      String regex = "(CREATE) (TABLE) [\\w]+[\\s]+[(]([A-Z0-9]+ (VARCHAR|INT|DOUBLE|CHAR)+[,]*[\\s]*)*([A-Z0-9]+ (VARCHAR|INT|DOUBLE|CHAR)+)+[)][;]";
+      String regex = "\\s*(CREATE)\\s+(TABLE)\\s+([0-9_A-Z$]+[_A-Z$])\\s*[(](\\s*[0-9_A-Z$]+[_A-Z$]\\s+(VARCHAR|INT|DOUBLE|CHAR))((\\s*[,]\\s*[0-9_A-Z$]+[_A-Z$])\\s*([0-9_A-Z$]+[_A-Z$]\\s+(VARCHAR|INT|DOUBLE|CHAR)))*\\s*[)]\\s*[;]\\s*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -128,6 +128,55 @@ public class Sentencias {
     return dataBaseName;
   }
   
+  /* Devuelve nombre de una tabla */
+  private String getNombreTabla(String query, String sentencia){
+      System.out.println(query);
+      String tableName = query.replace(sentencia, "");
+      tableName = tableName.replaceFirst(" ", "");
+      return tableName.substring(0,tableName.indexOf("("));
+  }
+  
+  /* Generador del codigo del objecto tabla */
+  private StringBuilder codeGeneration(String className, HashMap<String, String> attr) {
+    StringBuilder code = new StringBuilder();    
+    Set<String> attrNames = attr.keySet();
+    Iterator<String> iterator = attrNames.iterator();
+    
+    /* Generación del código */
+    code.append("package examen1;\n");
+    code.append("public class ").append(className).append(" {\n");   
+    
+    /* Declaración de variables */
+    while (iterator.hasNext()) {
+      String key = iterator.next();
+      String virtualType = attr.get(key);
+      String realType = getRealType(virtualType);
+      code.append("private  ").append(realType).append(" ").append(key).append(";\n");
+    }
+    
+    /* Getters */
+    iterator = attrNames.iterator();
+    while (iterator.hasNext()) {
+      String key = iterator.next();
+      String virtualType = attr.get(key);
+      String realType = getRealType(virtualType);
+      code.append("public ").append(realType).append(" get").append(key).append(" () {\n return this.").append(key).append(";}\n");
+    }
+    
+    /* Setters */
+    iterator = attrNames.iterator();
+    while (iterator.hasNext()) {
+      String key = iterator.next();
+      String virtualType = attr.get(key);
+      String realType = getRealType(virtualType);
+      code.append("public void set").append(key).append(" (").append(realType).append(" ").append(key).append(") {\n this.").append(key).append("  =  ").append(key).append(";}\n");
+    }
+    
+    code.append("\n}");
+    System.out.println("Generated Code: " + code); //Pruebas vemos como genero el codigo
+    return code;
+  }
+  
   /* Método de la sentencia CREATE DATABASE */
   public String createDatabase(String query) {
     return getNombreBase(query.replaceAll("[\\s]+"," "), "CREATE DATABASE");
@@ -140,34 +189,34 @@ public class Sentencias {
   }
   /* Fin del método de la sentencia DROP DATABASE */
   
+  /* Método de la sentencia USE */
   public String useDatabase(String query) {
-    return getNombreBase(query, "USE");
+    return getNombreBase(query.replaceAll("[\\s+]"," "), "USE");
   }
+  /* Fin del método de la sentencia USE */
   
+  /* Métodos de la sentencia CREATE TABLE */
   public String getTableName(String query) {
-    String p1 = getNombreBase(query, "CREATE TABLE");
-    return p1.substring(0, p1.indexOf("("));
+    return getNombreTabla(query.replaceAll("[\\s+]", " "), "CREATE TABLE");
   }
   
-  public String getTableNameDrop(String query) {
-    return getNombreBase(query, "DROP TABLE");
-  }
-  
-  public boolean getTableAttributes(String query, String tableName) {
+  public boolean getTableAttributes(String query, String tableName){
     String attr = query.substring(query.indexOf("(") + 1, query.indexOf(")"));  // Se obtienen los atributos
-    attr = attr.trim();                                                         // Se eliminan posibles espacios en blanco al inicio del substring
+    attr = attr.replaceAll("[\\s]+"," ");                                                // Se eliminan todos los espacios en blanco
     String[] attrs = attr.split(",");                                           // Se obtienen todos los atributos con su tipo de variable.
     
     /* Se obtienen los campos ingresados */
     HashMap<String, String> atts = new HashMap<>();
     for(String at: attrs) {
-      at = at.trim();
+      at = at.trim();   //Se eliminan los espacios al principio y al final de cada atributo, dejando unicamente un espacio entre el tipo y el valor
       String parts[] = at.split(" ");
-      parts[0] = parts[0].trim(); parts[1] = parts[1].trim();
-      if (atts.containsKey(parts[0])) {                                         // valor duplicado
+//      parts[0] = parts[0].trim(); 
+//      parts[1] = parts[1].trim();
+      if (atts.containsKey(parts[0])) {  // valor duplicado
         return false;
-      } else {
-        atts.put(parts[0], parts[1]);                                           // Se ponen los campos en el HashMap
+      } 
+      else {
+        atts.put(parts[0], parts[1]);  // Se ponen los campos en el HashMap
       }
     }
     
@@ -181,47 +230,6 @@ public class Sentencias {
     return true;
   }
   
-  private StringBuilder codeGeneration(String className, HashMap<String, String> attr) {
-    StringBuilder code = new StringBuilder();    
-    Set<String> attrNames = attr.keySet();
-    Iterator<String> iterator = attrNames.iterator();
-    
-    /* Generación del código */
-    code.append("package examen1;\n");
-    code.append("public class " + className + " {\n");   
-    
-    /* Declaración de variables */
-    while (iterator.hasNext()) {
-      String key = iterator.next();
-      String virtualType = attr.get(key);
-      String realType = getRealType(virtualType);
-      code.append("private " + realType + " " + key + ";\n");
-    }
-    
-    /* Getters */
-    iterator = attrNames.iterator();
-    while (iterator.hasNext()) {
-      String key = iterator.next();
-      String virtualType = attr.get(key);
-      String realType = getRealType(virtualType);
-      code.append("public " + realType + " get" + key + " () {\n return this." + key + ";}\n");
-    }
-    
-    /* Setters */
-    iterator = attrNames.iterator();
-    while (iterator.hasNext()) {
-      String key = iterator.next();
-      String virtualType = attr.get(key);
-      String realType = getRealType(virtualType);
-      code.append("public void set" + key + " (" + realType + " " + key + ") {\n this." + key + " = " + key + ";}\n");
-    }
-    
-    code.append("}");
-    // System.out.println("Generated Code: " + code);
-    
-    return code;
-  }
-  
   private String getRealType(String virtualType) {
     if (virtualType.compareTo("VARCHAR") == 0) {
       return "String";
@@ -233,6 +241,13 @@ public class Sentencias {
       return "char";
     }
   }
+  /* Fin de los métodos de la sentencia CREATE TABLE */
+  
+  
+  public String getTableNameDrop(String query) {
+    return getNombreBase(query, "DROP TABLE");
+  }
+  
   
   public int showDatabases(String query) {
     query = query.replace(";", "");
