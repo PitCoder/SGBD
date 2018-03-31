@@ -1,9 +1,9 @@
 package examen1;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,7 +87,7 @@ public class Sentencias {
   }
   
   public boolean verifySyntaxInsertInto(String query){
-      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([0-9_A-Z$]+[0-9_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*[)])[\\s]*[;][\\s]*";
+      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([.0-9_A-Z$]+)([\\s]*[,][\\s]*[.0-9_A-Z$]+)*[)])[\\s]*[;][\\s]*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -133,7 +133,17 @@ public class Sentencias {
       System.out.println(query);
       String tableName = query.replace(sentencia, "");
       tableName = tableName.replaceFirst(" ", "");
-      return tableName.substring(0,tableName.indexOf("("));
+      if(query.contains("VALUES") || query.contains("VALUE")){
+          tableName =  tableName.substring(0,tableName.indexOf(" "));
+      }
+      else if(query.contains("SET")){
+          tableName = tableName.substring(0,tableName.indexOf(" "));
+      }
+      else{
+          tableName = tableName.replaceFirst(" ", "");
+          tableName =  tableName.substring(0,tableName.indexOf("("));
+      }
+      return tableName;
   }
   
   /* Generador del codigo del objecto tabla */
@@ -144,6 +154,7 @@ public class Sentencias {
     
     /* Generación del código */
     code.append("package examen1;\n");
+    code.append("import java.util.ArrayList;\n");
     code.append("public class ").append(className).append(" {\n");   
     
     /* Declaración de variables */
@@ -162,6 +173,18 @@ public class Sentencias {
       String realType = getRealType(virtualType);
       code.append("public ").append(realType).append(" get").append(key).append(" () {\n return this.").append(key).append(";}\n");
     }
+    
+    /* Getter especializado en regresar un array de strings con el nombre de los tipos de los atributos */
+    code.append("public ").append("ArrayList<String> ").append(" getTypes () {\n ArrayList<String> types = new ArrayList<>();\n");
+    iterator = attrNames.iterator();
+    ArrayList<String> types = new ArrayList<>();
+    while (iterator.hasNext()){
+        String key = iterator.next();
+        String virtualType = attr.get(key);
+        String realType = getRealType(virtualType);
+        code.append("types.add(\"").append(key).append(",").append(realType).append("\");\n");
+    }
+    code.append("return types;}\n");
     
     /* Setters */
     iterator = attrNames.iterator();
@@ -243,6 +266,68 @@ public class Sentencias {
   }
   /* Fin de los métodos de la sentencia CREATE TABLE */
   
+  /* Métodos de la sentencia INSERT INTO */
+  public String getITableName(String query){
+      return getNombreTabla(query.replaceAll("[\\s+]", " "), "INSERT INTO");
+  }
+  
+  private String getValType(String value){
+      String type = "String";
+      try{
+          Integer.parseInt(value);
+          type = "int";
+      }
+      catch(NumberFormatException e){
+          try{
+              Double.parseDouble(value);
+              type = "double";
+          }
+          catch(NumberFormatException ex){
+              if(value.length() == 1){
+                type = "char";
+              } 
+          }
+      }
+      return type;
+  }
+  
+  public boolean verifyInsertedValues(String query, String tableName){
+      boolean retrieve = false;
+      DynamicCompiler dc = new DynamicCompiler();
+      Object tabla = dc.getInstance(tableName);
+      try{
+          System.out.println(tabla.getClass().getName());
+          Method[] methods = tabla.getClass().getMethods();
+          for (Method method : methods) {
+              System.out.println(method.getName());
+          }
+          Method method  = tabla.getClass().getMethod("getTypes", null);
+          System.out.println("method = " + method.toString());
+          ArrayList<String> pairs = (ArrayList<String>) method.invoke(tabla, null);
+          System.out.println("Success");
+          
+          String rvals = query.substring(query.indexOf("(") + 1, query.indexOf(")"));
+          String[] vals = rvals.split(",");
+          if(pairs.size() == vals.length){
+              String type;
+              for(int i=0;i < pairs.size(); i++){
+                  String val = vals[i].trim();
+                  String valtype = getValType(val);
+                  if(!valtype.equals(pairs.get(i).split(",")[1])){
+                      return  retrieve;
+                  }
+                  type = pairs.get(i);
+              }
+              retrieve = true;
+          }            
+      }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+      return retrieve;
+  }
+  
+  /*Fin de los métodos de la sentencia INSERT INTO */
   
   public String getTableNameDrop(String query) {
     return getNombreBase(query, "DROP TABLE");

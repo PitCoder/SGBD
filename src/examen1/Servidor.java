@@ -264,7 +264,7 @@ public class Servidor {
                     else {
                       /* Se añade la tabla al hashmap (En este paso ya debería estar la instancia de la clase */                      
                       DynamicCompiler dc  = new DynamicCompiler();
-                      Object tabla  = dc.getInstance(tableName);                      
+                      Object tabla  = dc.getInstance(tableName);
                       LinkedList<Object> linkedList = new LinkedList<>();
                       tablasActuales.put(tableName, linkedList);
                       saveTable(tablasActuales.get(tableName), baseActual, tableName);
@@ -282,7 +282,8 @@ public class Servidor {
             case 4: /* Se elimina tabla */
               if (baseActual == null) {
                 mensajeAEnviar = "No se ha seleccionado base de datos";
-              } else {
+              } 
+              else {
                 String tableName = se.getTableNameDrop(query);                  // Se obtiene nombre.
                 HashMap tablasActuales = bases.get(baseActual);                 // Se obtienen las tablas actuales
                 
@@ -295,7 +296,42 @@ public class Servidor {
                 System.out.println("TA: " + tablasActuales);
               }
               break;
-            
+              
+            case 6 : /*Se insertan valores a la tabla */
+                if(baseActual == null){
+                    mensajeAEnviar =  "No se ha seleccionado base de datos";
+                }
+                else{
+                    if(se.verifySyntaxInsertInto(query)){
+                        String tableName = se.getITableName(query);
+                        System.out.println(tableName);
+                        HashMap tablasActuales = bases.get(baseActual);
+                        if(tablasActuales.containsKey(tableName)){
+                            if(se.verifyInsertedValues(query, tableName)){
+                                mensajeAEnviar = "Valores correctos insertados en orden correcto";
+                            }
+                            else{
+                                mensajeAEnviar = "Error: Los valores no coinciden con los definidos en la tabla.";
+                            }
+                            // Se obtienen atributos y se genera objeto dinámicamente.      
+//                            if (!se.getTableValues(query, tableName)){                                                     // Nombres duplicados.
+//                              
+//                            }
+//                            else{
+//                                mensajeAEnviar = "Valores insertados exitosamente";
+//                            }
+                        }
+                        else{
+                            mensajeAEnviar = "No existe tabla con ese nombre";
+                        }
+                        
+                    }
+                    else{
+                        mensajeAEnviar = "Error de Sintaxis: Insert Into";
+                    }
+                }
+                break;
+                
             case 8: /* Se elimina base de datos */
               int res = se.showDatabases(query);                                // Se verifica sintaxis.
               if (res == 0) {                                                   // La sintaxis no es la correcta.
