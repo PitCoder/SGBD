@@ -176,8 +176,8 @@ public class Servidor implements java.io.Serializable{
         bases = loadFromStorage();
         for (;;) {
           ObjectInputStream ois = new ObjectInputStream(cl.getInputStream());
-          String query                = (String) ois.readObject();
-          query                          = query.toUpperCase();
+          String oldquery  = (String) ois.readObject();
+          String query  = oldquery.toUpperCase();
           
           /* Se checa que sentencia es la que se quiere */
           Sentencias se = new Sentencias();
@@ -364,7 +364,7 @@ public class Servidor implements java.io.Serializable{
                         System.out.println(tableName);
                         LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                         if(tablasActuales.containsKey(tableName)){
-                            Object tupla = se.verifyInsertedValues(query, tableName);
+                            Object tupla = se.verifyInsertedValues(oldquery, tableName);
                             if(tupla!=null){
                                 LinkedList<Object> tuplas = tablasActuales.get(tableName);
                                 tuplas.add(tupla);
@@ -382,6 +382,28 @@ public class Servidor implements java.io.Serializable{
                     }
                     else{
                         mensajeAEnviar = "Error de Sintaxis: Insert Into";
+                    }
+                }
+                break;
+                
+            case 7:
+                if(baseActual == null){
+                    mensajeAEnviar =  "No se ha seleccionado base de datos";
+                }
+                else{
+                    if(se.verifySyntaxUpdate(query)){
+                        String tableName = se.getUTableName(query);
+                        System.out.println(tableName);
+                        LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
+                        if(tablasActuales.containsKey(tableName)){
+                            //se.updateValues()
+                        }
+                        else{
+                            mensajeAEnviar = "No existe tabla con ese nombre";
+                        }
+                    }
+                    else{
+                        mensajeAEnviar = "Error de Sintaxis: Update";
                     }
                 }
                 break;

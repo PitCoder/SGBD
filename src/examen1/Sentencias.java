@@ -89,14 +89,14 @@ public class Sentencias {
   }
   
   public boolean verifySyntaxInsertInto(String query){
-      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([.0-9_a-z A-Z$]+)([\\s]*[,][\\s]*[.0-9_a-z A-Z$]+)*[)])[\\s]*[;][\\s]*";
+      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))([\\s]*[,][\\s]*([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))*[)])[\\s]*[;][\\s]*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
   }
   
   public boolean verifySyntaxUpdate(String query){
-      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([0-9_A-Z$]+[0-9_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*[)])[\\s]*[;][\\s]*";
+      String regex = "[\\s]*(UPDATE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+(SET)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]*[=][\\s]*([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))([\\s]+(WHERE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]*((([=]|(>=)|(<=)|[>]|[<]|(LIKE))[\\s]*([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))|([\\s]+(BETWEEN)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))[\\s]+(AND)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))))*[\\s]*[;][\\s]*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -411,11 +411,11 @@ public class Sentencias {
       DynamicCompiler dc = new DynamicCompiler();
       Object tupla = dc.getInstance(tableName);
       try{
-          System.out.println(tupla.getClass().getName());
-          Method[] methods = tupla.getClass().getMethods();
-          for (Method method : methods) {
-              System.out.println(method.getName());
-          }
+//          System.out.println(tupla.getClass().getName());
+//          Method[] methods = tupla.getClass().getMethods();
+//          for (Method method : methods) {
+//              System.out.println(method.getName());
+//          }
           Method method  = tupla.getClass().getMethod("extractTypes", null);
           System.out.println("method = " + method.toString());
           ArrayList<String> pairs = (ArrayList<String>) method.invoke(tupla, null);
@@ -430,6 +430,11 @@ public class Sentencias {
               for(int i=0;i < pairs.size(); i++){
                   pair = pairs.get(i).split(",");
                   val = vals[i].trim();
+                  System.out.println(val);
+                  if(val.startsWith("\"")){
+                      val = val.substring(1,val.length()-1);
+                      System.out.println(val);
+                  }
                   valtype = getValType(val);
                   if(!valtype.equals(pair[1])){
                       return  null;
@@ -460,4 +465,10 @@ public class Sentencias {
       return tupla;
   }
   /*Fin de los métodos de la sentencia INSERT INTO */
+  
+  /* Métodos de la sentencia UPDATE */
+  public String getUTableName(String query){
+      return getNombreTabla(query.replaceAll("[\\s]+"," "), "UPDATE");
+  }  
+  /*Fin de los métodos de la sentencia UPDATE */
 }
