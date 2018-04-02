@@ -336,24 +336,43 @@ public class Servidor implements java.io.Serializable{
                 else{
                     if(se.verifySyntaxSelect(query)){
                         String tableName = se.getSTableName(query);
+                        System.out.println(tableName);
                         LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                         if(tablasActuales.containsKey(tableName)){
-                        ArrayList<String> parameters = se.extractQueryAttributes(query);
-                        if(parameters.get(0).equals("ALL")){
-                            LinkedList<Object> tuplas = tablasActuales.get(tableName);
-                            mensajeAEnviar = se.invokeAllGetters(tuplas, tableName);
-                            
-                        }
-//                            if(parameters.get(0).equals("ALL")){
-//                                LinkedList<Object> tuplas = tablasActuales.get(tableName);
-//                                se.invokeGetters(tuplas, tableName);
-//                            }
-//                            else{
-//                                System.out.println("Extraemos unicamente los atributos");
-//                            }
+                        LinkedList<Object> tuples = tablasActuales.get(tableName);
+                            if(tuples.size()>0){
+                                ArrayList<String> parameters = se.extractQueryAttributes(query);
+                                ArrayList<String> elements = se.getSelectElements(query, oldquery);
+                                if(elements.size() > 0){
+                                    ArrayList<Integer> matchedTuples = se.getMatchTuples(tuples, elements, "SELECT");
+                                    if(matchedTuples == null){
+                                            mensajeAEnviar = "Los valores a buscar no coinciden con los definidos en la tabla";
+                                    }
+                                    else{
+                                        LinkedList<Object> newTuples = se.getTuples(tuples, matchedTuples, elements);
+                                        if(parameters.get(0).equals("ALL")){
+                                            mensajeAEnviar = se.invokeAllGetters(newTuples, tableName);
+                                        }
+                                        else{
+                                            mensajeAEnviar = se.invokeGetters(newTuples, parameters, tableName);
+                                        }
+                                    }
+                                }
+                                else{
+                                    if(parameters.get(0).equals("ALL")){
+                                        mensajeAEnviar = se.invokeAllGetters(tuples, tableName);
+                                    }
+                                    else{
+                                        mensajeAEnviar = se.invokeGetters(tuples, parameters, tableName);
+                                    }
+                                }
+                            }
+                            else{
+                                mensajeAEnviar = "Para actualizar, deben de haber por lo menos 1 registro en la tablas";
+                            }                       
                         }
                         else{
-                            mensajeAEnviar = "No existe tabla con ese nombre.";
+                                mensajeAEnviar = "No existe tabla con ese nombre.";
                         }
                     }
                     else{
@@ -415,7 +434,8 @@ public class Servidor implements java.io.Serializable{
                                     if(matchedTuples.size() > 0){
                                         LinkedList<Object> newTuples = se.updateTuples(tuples, matchedTuples, elements);
                                         if(newTuples!=null){
-                                            tablasActuales.replace(query, tuples, newTuples);
+                                            //tablasActuales.replace(query, tuples, newTuples);
+                                            tablasActuales.replace(tableName, tuples, newTuples);
                                             saveTable(tablasActuales.get(tableName), baseActual, tableName);
                                             mensajeAEnviar = "Los valores se han actualizado exitosamente";
                                         }
@@ -470,6 +490,57 @@ public class Servidor implements java.io.Serializable{
                 mensajeAEnviar = "No se ha seleccionado base de datos";
               }
               break;
+           
+            case 10:
+                if(baseActual != null){
+                    if(se.verifySyntaxDelete(query)){   
+                        String tableName = se.getDTableName(query);
+                        System.out.println(tableName);
+                        LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
+                        if(tablasActuales.containsKey(tableName)){
+                         LinkedList<Object> tuples = tablasActuales.get(tableName);
+                             if(tuples.size()>0){
+                                 //ArrayList<String> parameters = se.extractQueryAttributes(query);
+                                 ArrayList<String> elements = se.getDeleteElements(query, oldquery);
+                                 if(elements.size() > 0){
+                                     ArrayList<Integer> matchedTuples = se.getMatchTuples(tuples, elements, "SELECT");
+                                     ArrayList<Integer> notmatchedTuples = new ArrayList<Integer>();
+                                     
+                                     for(int i=0;i<tuples.size();i++){
+                                         if(!matchedTuples.contains(i))
+                                             notmatchedTuples.add(i);
+                                     }
+                                     
+                                     if(notmatchedTuples == null){
+                                             mensajeAEnviar = "Los valores a eliminar no coinciden con los definidos en la tabla";
+                                     }
+                                     else{
+                                        LinkedList<Object> newTuples = se.getTuples(tuples, notmatchedTuples, elements);
+                                        tablasActuales.replace(tableName, tuples, newTuples);
+                                        saveTable(tablasActuales.get(tableName), baseActual, tableName);
+                                        mensajeAEnviar = "Los valores se han eliminado exitosamente";
+                                     }
+                                 }
+                                 else{
+                                        tablasActuales.replace(tableName, tuples, new LinkedList<Object>());
+                                        saveTable(tablasActuales.get(tableName), baseActual, tableName);
+                                        mensajeAEnviar = "Los valores se han eliminado exitosamente";
+                                 }
+                             }
+                             else{
+                                 mensajeAEnviar = "Para eliminar, deben de haber por lo menos 1 registro en la tablas";
+                             }                       
+                        }
+                    }
+                    else{
+                        mensajeAEnviar = "Error de Sintaxis: Delete";
+                    }
+                
+                }
+                else{
+                    mensajeAEnviar = "No se ha seleccionado base de datos";
+                }
+                break;
               
             default: /* Sentencia no reconocida */
               mensajeAEnviar = "Sentencia no reconocida.";

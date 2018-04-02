@@ -25,7 +25,8 @@ public class Sentencias {
     validPrefixes.add("INSERT INTO");       // 6
     validPrefixes.add("UPDATE");            // 7
     validPrefixes.add("SHOW DATABASES");    // 8
-    validPrefixes.add("SHOW TABLES");    // 8
+    validPrefixes.add("SHOW TABLES");    // 9
+    validPrefixes.add("DELETE"); //10
   }
   
   
@@ -82,7 +83,7 @@ public class Sentencias {
   }
   
   public boolean verifySyntaxSelect(String query){
-      String regex = "[\\s]*(SELECT)[\\s]+((ALL)|(([0-9_A-Z$]+[_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*))[\\s]+(FROM)[\\s]+[0-9_A-Z$]+[_A-Z$][\\s]*[;][\\s]*";
+      String regex = "[\\s]*(SELECT)[\\s]+((ALL)|(([0-9_A-Z$]+[_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*))[\\s]+(FROM)[\\s]+[0-9_A-Z$]+[_A-Z$]([\\s]+(WHERE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((([=]|(>=)|(<=)|[>]|[<]|(LIKE))[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))|((BETWEEN)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))[\\s]+(AND)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))))*[\\s]*[;][\\s]*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -97,6 +98,13 @@ public class Sentencias {
   
   public boolean verifySyntaxUpdate(String query){
       String regex = "[\\s]*(UPDATE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+(SET)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+[=][\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))([\\s]+(WHERE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((([=]|(>=)|(<=)|[>]|[<]|(LIKE))[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))|((BETWEEN)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))[\\s]+(AND)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))))*[\\s]*[;][\\s]*";
+      Pattern pattern = Pattern.compile(regex);
+      Matcher matcher = pattern.matcher(query);
+      return matcher.matches();
+  }
+  
+  public boolean verifySyntaxDelete(String query){
+      String regex = "[\\s]*(DELETE)[\\s]+(FROM)[\\s]+([0-9_A-Z$]+[_A-Z$])([\\s]+(WHERE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((([=]|(>=)|(<=)|[>]|[<]|(LIKE))[\\s]+([.0-9]+|([\\\"][.0-9_a-z A-Z$]+[\\\"])))|((BETWEEN)[\\s]+([.0-9]+|([\\\"][.0-9_a-z A-Z$]+[\\\"]))[\\s]+(AND)[\\s]+([.0-9]+|([\\\"][.0-9_a-z A-Z$]+[\\\"])))))*[\\s]*[;][\\s]*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -119,7 +127,7 @@ public class Sentencias {
   }
   
   public boolean verifyReservedWord(String query){
-      String regex = "((CREATE)|(DATABASE)|(DROP)|(USE)|(TABLE)|(SELECT)|(INSERT)|(INTO)|(FROM)|(UPDATE)|(DESC)|(SHOW)|(DATABASES)|(TABLES)|(WHERE)|(ALL))";
+      String regex = "((CREATE)|(DATABASE)|(DROP)|(USE)|(TABLE)|(SELECT)|(INSERT)|(INTO)|(FROM)|(UPDATE)|(DESC)|(SHOW)|(DATABASES)|(TABLES)|(WHERE)|(ALL)|(DELETE))";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       boolean result = matcher.matches();
@@ -153,6 +161,8 @@ public class Sentencias {
           tableName = tableName.substring(tableName.indexOf(" FROM ") + 5, tableName.length());
           System.out.println(tableName);
           if(tableName.contains("WHERE")){
+              tableName = tableName.trim();
+              System.out.println(tableName);
               tableName = tableName.substring(0, tableName.indexOf(" "));
           }
           else{
@@ -371,6 +381,104 @@ public class Sentencias {
           e.printStackTrace();
       }
       return resultSet;
+  }
+  
+  public String invokeGetters(LinkedList<Object> tuples, ArrayList<String> attributes, String tableName){
+      DynamicCompiler dc = new DynamicCompiler();
+      Object tupla = dc.getInstance(tableName);
+      ArrayList<String> headers = new ArrayList<String>();
+      ArrayList<ArrayList<String>> content = new ArrayList<ArrayList<String>>();
+      String resultSet = "";
+      
+      try{
+          //System.out.println(tupla.getClass().getName());
+          Method[] methods = tupla.getClass().getMethods();
+          ArrayList<String> getters = new ArrayList<>();
+          
+          for(int i=0;i<attributes.size();i++){
+              getters.add("get_" + attributes.get(i));
+              headers.add(attributes.get(i));
+          }
+          
+          for(int i=0;i<tuples.size();i++){
+            Object tuple = tuples.get(i);
+            Method method;
+            ArrayList<String> row = new ArrayList<String>();
+            for(int j=0;j<getters.size();j++){
+               method = tuple.getClass().getMethod(getters.get(j),null);
+               if(method.getReturnType().equals(int.class)){
+                   //resultSet = resultSet + Integer.toString((int)method.invoke(tuple, null));
+                   row.add(Integer.toString((int)method.invoke(tuple, null)));
+               }
+               else if(method.getReturnType().equals(double.class)){
+                   //resultSet = resultSet + Double.toString((double)method.invoke(tuple, null));
+                   row.add(Double.toString((double)method.invoke(tuple, null)));
+               }
+               else if(method.getReturnType().equals(char.class)){
+                   //resultSet = resultSet  + String.valueOf((char)method.invoke(tuple, null));
+                   row.add(String.valueOf((char)method.invoke(tuple, null)));
+               }
+               else{
+                   //resultSet = resultSet + (String)method.invoke(tuple, null);
+                   row.add((String)method.invoke(tuple, null));
+               }
+               //resultSet =  resultSet + ",";
+            }
+            //resultSet = resultSet + "\n";
+            content.add(row);
+          }
+          ConsoleTable ct = new ConsoleTable(headers, content);
+          resultSet = ct.printTable();
+      }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+      return resultSet;
+  }
+  
+  public ArrayList<String> getSelectElements(String query, String oldquery){
+      ArrayList<String> elements = new ArrayList<>(); 
+      Pattern pattern = Pattern.compile("[\\s]*(SELECT)[\\s]+((ALL)|(([0-9_A-Z$]+[_A-Z$])([\\s]*[,][\\s]*[0-9_A-Z$]+[_A-Z$])*))[\\s]+(FROM)[\\s]+[0-9_A-Z$]+[_A-Z$][\\s]*");
+      Matcher matcher = pattern.matcher(query);
+      try{
+              int beginIndex = 0;
+              int endIndex = 0;
+              if(matcher.find()){
+                  beginIndex = matcher.start();
+                  endIndex = matcher.end();
+                  System.out.println("Match found at index = " +   beginIndex + "-" + endIndex);
+              }
+              
+              String outter = "(.*)([\\s]+(WHERE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((([=]|(>=)|(<=)|[>]|[<]|(LIKE))[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))|((BETWEEN)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))[\\s]+(AND)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))))(.*)";
+              if(query.matches(outter)){
+                    System.out.println("Where sentence detected");
+                    elements.addAll(getWhereElements(query.substring(endIndex),oldquery.substring(endIndex)));
+              }
+       }
+       catch(Exception e){
+           System.out.println("No region match");
+       }        
+      return elements;
+  }
+  
+  public LinkedList<Object> getTuples(LinkedList<Object> tuples, ArrayList<Integer> matchedTuples, ArrayList<String> elements){
+      LinkedList<Object> newTuples = new LinkedList<Object>();
+      Object tuple = tuples.get(0);
+      Method[] methods = tuple.getClass().getMethods();
+      Method method = null;
+      String attribute = elements.get(0);
+      String value = elements.get(1);
+      System.out.println(attribute);
+      System.out.println(value);
+      
+      if(value.startsWith("\"")){
+          value = value.substring(1,value.length()-1);
+      }
+      
+      for(int i=0;i<matchedTuples.size();i++){
+          newTuples.add(tuples.get(matchedTuples.get(i)));
+      }
+      return newTuples;
   }
   /* Fin de los métodos de la sentencia SELECT */
   
@@ -706,8 +814,7 @@ public class Sentencias {
                   }
                   catch(Exception e){
                       e.printStackTrace();
-                  }
-                  
+                  }            
               }
               else{
                   String attribute = elements.get(2);
@@ -805,6 +912,190 @@ public class Sentencias {
                   matchedTuples.add(i);
           }
       }
+      else if(query.equals("SELECT")){
+          if(elements.size() > 3){
+                  String attribute = elements.get(0);
+                  String operator = elements.get(1);
+                  String value1 = elements.get(2);
+                  String value2 = elements.get(3);
+                  
+                                    tuple = tuples.get(0);
+                  try{
+                      if(value1.startsWith("\"")){
+                          value1 = value1.substring(1,value1.length()-1);
+                      }
+                      if(value2.startsWith("\"")){
+                          value2 = value2.substring(1,value2.length()-1);
+                      }
+                    String returnType;
+                    method = tuple.getClass().getMethod("get_"+ attribute, null);
+                    if(method.getReturnType().equals(int.class)){
+                        returnType = "int";
+                        if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
+                            int val1 = Integer.parseInt(value1);
+                            int val2 = Integer.parseInt(value2);
+                            int getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (int)method.invoke(tuple, null);
+                                if(verifier.matchValBetween(val1,val2,getval)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                    else if(method.getReturnType().equals(double.class)){
+                        returnType = "double";
+                        if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
+                            double val1 = Double.parseDouble(value1);
+                            double val2 = Double.parseDouble(value2);
+                            double getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (double)method.invoke(tuple, null);
+                                if(verifier.matchValBetween(val1,val2,getval)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                    else if(method.getReturnType().equals(char.class)){
+                        returnType = "char";
+                        if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
+                            char val1 = value1.charAt(0);
+                            char val2 = value2.charAt(0);
+                            char getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (char)method.invoke(tuple, null);
+                                if(verifier.matchValBetween(val1,val2,getval)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                    else{
+                        returnType = "String";
+                        if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
+                            String getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (String)method.invoke(tuple, null);
+                                if(verifier.matchValBetween(value1,value2,getval)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }  
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }                       
+                  }
+                  catch(Exception e){
+                      e.printStackTrace();
+                  }
+          }
+          else{
+              String attribute = elements.get(0);
+              String operator = elements.get(1);
+              String value = elements.get(2);
+                  tuple = tuples.get(0);
+                  try{
+                    if(value.startsWith("\"")){
+                        value = value.substring(1,value.length()-1);
+                    }
+                    String returnType;
+                    method = tuple.getClass().getMethod("get_"+ attribute, null);
+                    if(method.getReturnType().equals(int.class)){
+                        returnType = "int";
+                        if(returnType.equals(getValType(value))){
+                            int val = Integer.parseInt(value);
+                            int getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (int)method.invoke(tuple, null);
+                                if(verifier.matchVal(operator,getval,val)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                    else if(method.getReturnType().equals(double.class)){
+                        returnType = "double";
+                        if(returnType.equals(getValType(value))){
+                            double val = Double.parseDouble(value);
+                            double getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (double)method.invoke(tuple, null);
+                                if(verifier.matchVal(operator,getval, val)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                    else if(method.getReturnType().equals(char.class)){
+                        returnType = "char";
+                        if(returnType.equals(getValType(value))){
+                            char val = value.charAt(0);
+                            char getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (char)method.invoke(tuple, null);
+                                if(verifier.matchVal(operator,getval, val)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                    else{
+                        returnType = "String";
+                        if(returnType.equals(getValType(value))){
+                            String getval;
+                            for(int i=0; i<tuples.size(); i++){
+                                tuple = tuples.get(i);
+                                getval = (String)method.invoke(tuple, null);
+                                if(verifier.matchVal(operator,getval, value)){
+                                    System.out.println(getval);
+                                    matchedTuples.add(i);
+                                }  
+                            }
+                        }
+                        else{
+                            return null;
+                        }
+                    }
+                  }
+                  catch(Exception e){
+                      e.printStackTrace();
+                  }          
+          }     
+      }
       return matchedTuples;
   }
   
@@ -894,4 +1185,35 @@ public class Sentencias {
       return tuples;
   }
   /*Fin de los métodos de la sentencia UPDATE */
+  
+  /* Métodos de la sentencia DELETE */
+  public String getDTableName(String query){
+      return getNombreTabla(query.replaceAll("[\\s]+", " "), "DELETE");
+  }
+  
+    public ArrayList<String> getDeleteElements(String query, String oldquery){
+      ArrayList<String> elements = new ArrayList<>(); 
+      Pattern pattern = Pattern.compile("[\\s]*(DELETE)[\\s]+(FROM)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]*");
+      Matcher matcher = pattern.matcher(query);
+      try{
+              int beginIndex = 0;
+              int endIndex = 0;
+              if(matcher.find()){
+                  beginIndex = matcher.start();
+                  endIndex = matcher.end();
+                  System.out.println("Match found at index = " +   beginIndex + "-" + endIndex);
+              }
+              
+              String outter = "(.*)([\\s]+(WHERE)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((([=]|(>=)|(<=)|[>]|[<]|(LIKE))[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))|((BETWEEN)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))[\\s]+(AND)[\\s]+([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))))(.*)";
+              if(query.matches(outter)){
+                    System.out.println("Where sentence detected");
+                    elements.addAll(getWhereElements(query.substring(endIndex),oldquery.substring(endIndex)));
+              }
+       }
+       catch(Exception e){
+           System.out.println("No region match");
+       }        
+      return elements;
+  }
+  /*Fin de los métodos de la sentencia DELETE */
 }
