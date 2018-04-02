@@ -396,22 +396,32 @@ public class Servidor implements java.io.Serializable{
                         System.out.println(tableName);
                         LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                         if(tablasActuales.containsKey(tableName)){
-                            ArrayList<String> elements = se.getSetElements(query, oldquery);
-                            ArrayList<Integer> matchedTuples = se.getMatchTuples(tablasActuales.get(tableName), elements, "SET");
-                            if(matchedTuples == null){
-                                mensajeAEnviar = "Los valores a buscar no coinciden con los definidos en la tabla";
-                            }
-                            else{
-                                if(matchedTuples.size() > 0){
-                                    for(int i=0;i<matchedTuples.size();i++){
-                                        System.out.println(matchedTuples.get(i));
-                                    }
-                                    mensajeAEnviar = "Si se encontraron :v";    
+                            LinkedList<Object> tuples = tablasActuales.get(tableName);
+                            if(tuples.size() > 0){
+                                ArrayList<String> elements = se.getSetElements(query, oldquery);
+                                ArrayList<Integer> matchedTuples = se.getMatchTuples(tuples, elements, "SET");
+                                if(matchedTuples == null){
+                                    mensajeAEnviar = "Los valores a buscar no coinciden con los definidos en la tabla";
                                 }
                                 else{
-                                    mensajeAEnviar = "No se encontraron registros que cumplan el criterio";
+                                    if(matchedTuples.size() > 0){
+                                        LinkedList<Object> newTuples = se.updateTuples(tuples, matchedTuples, elements);
+                                        if(newTuples!=null){
+                                            tablasActuales.replace(query, tuples, newTuples);
+                                            saveTable(tablasActuales.get(tableName), baseActual, tableName);
+                                            mensajeAEnviar = "Los valores se han actualizado exitosamente";
+                                        }
+                                        else{
+                                            mensajeAEnviar = "No se pudieron modificar los valores";
+                                        }
+                                    }
+                                    else{
+                                        mensajeAEnviar = "No se encontraron registros que cumplan el criterio";
+                                    }
                                 }
-                                //se.invokeAllGetters(tuples, tableName);
+                            }
+                            else{
+                                mensajeAEnviar = "Para actualizar, deben de haber por lo menos 1 registro en la tablas";
                             }
                         }
                         else{
