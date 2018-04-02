@@ -396,7 +396,23 @@ public class Servidor implements java.io.Serializable{
                         System.out.println(tableName);
                         LinkedHashMap<String, LinkedList> tablasActuales = bases.get(baseActual);
                         if(tablasActuales.containsKey(tableName)){
-                            //se.updateValues()
+                            ArrayList<String> elements = se.getSetElements(query, oldquery);
+                            ArrayList<Integer> matchedTuples = se.getMatchTuples(tablasActuales.get(tableName), elements, "SET");
+                            if(matchedTuples == null){
+                                mensajeAEnviar = "Los valores a buscar no coinciden con los definidos en la tabla";
+                            }
+                            else{
+                                if(matchedTuples.size() > 0){
+                                    for(int i=0;i<matchedTuples.size();i++){
+                                        System.out.println(matchedTuples.get(i));
+                                    }
+                                    mensajeAEnviar = "Si se encontraron :v";    
+                                }
+                                else{
+                                    mensajeAEnviar = "No se encontraron registros que cumplan el criterio";
+                                }
+                                //se.invokeAllGetters(tuples, tableName);
+                            }
                         }
                         else{
                             mensajeAEnviar = "No existe tabla con ese nombre";
