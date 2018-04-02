@@ -138,25 +138,33 @@ public class Servidor implements java.io.Serializable{
   }
   
   private static String printDatabases(Set <String> dataBasesNames) {
-    String text = ".:: Bases de Datos ::. \n";
+    ArrayList<String> headers = new ArrayList<String>();
+    ArrayList<ArrayList<String>>content = new ArrayList<ArrayList<String>>();
+    headers.add(".:: Bases de Datos ::.");
+    
     Iterator<String> iterator = dataBasesNames.iterator();
-    
     while (iterator.hasNext()) {
-      text += "- " + iterator.next() + "\n";
+      ArrayList<String> row = new  ArrayList<String>();
+      row.add(iterator.next());
+      content.add(row);
     }
-    
-    return text;
+    ConsoleTable ct = new ConsoleTable(headers, content);
+    return ct.printTable();
   }
   
   private static String printTables(Set <String> tableNames) {
-    String text = ".:: Tablas de la Base ::. \n";
+    ArrayList<String> headers = new ArrayList<String>();
+    ArrayList<ArrayList<String>>content = new ArrayList<ArrayList<String>>();
+    headers.add(".:: Tablas de la Base ::.");
+    
     Iterator<String> iterator = tableNames.iterator();
-    
     while (iterator.hasNext()) {
-      text += "- " + iterator.next() + "\n";
+      ArrayList<String> row = new  ArrayList<String>();
+      row.add(iterator.next());
+      content.add(row);
     }
-    
-    return text;    
+    ConsoleTable ct = new ConsoleTable(headers, content);
+    return ct.printTable();
   }
     
   public static void main(String[] args) {

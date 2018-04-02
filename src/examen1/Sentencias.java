@@ -319,6 +319,8 @@ public class Sentencias {
   public String invokeAllGetters(LinkedList<Object> tuples, String tableName){
       DynamicCompiler dc = new DynamicCompiler();
       Object tupla = dc.getInstance(tableName);
+      ArrayList<String> headers = new ArrayList<String>();
+      ArrayList<ArrayList<String>> content = new ArrayList<ArrayList<String>>();
       String resultSet = "";
       try{
           //System.out.println(tupla.getClass().getName());
@@ -328,33 +330,42 @@ public class Sentencias {
               String methodName = method.getName();
               if(methodName.contains("get_")){
                   getters.add(methodName);
-                  resultSet = resultSet + methodName.replace("get_", "");
-                  resultSet = resultSet + "\t";
+                  headers.add(methodName.replace("get_", ""));
+                  //resultSet = resultSet + methodName.replace("get_", "");
+                  //resultSet = resultSet + "\t";
               }
           }
-          resultSet = resultSet + "\n";
+          //resultSet = resultSet + "\n";
           
           for(int i=0;i<tuples.size();i++){
             Object tuple = tuples.get(i);
             Method method;
+            ArrayList<String> row = new ArrayList<String>();
             for(int j=0;j<getters.size();j++){
                method = tuple.getClass().getMethod(getters.get(j),null);
                if(method.getReturnType().equals(int.class)){
-                   resultSet = resultSet + Integer.toString((int)method.invoke(tuple, null));
+                   //resultSet = resultSet + Integer.toString((int)method.invoke(tuple, null));
+                   row.add(Integer.toString((int)method.invoke(tuple, null)));
                }
                else if(method.getReturnType().equals(double.class)){
-                   resultSet = resultSet + Double.toString((double)method.invoke(tuple, null));
+                   //resultSet = resultSet + Double.toString((double)method.invoke(tuple, null));
+                   row.add(Double.toString((double)method.invoke(tuple, null)));
                }
                else if(method.getReturnType().equals(char.class)){
-                   resultSet = resultSet  + String.valueOf((char)method.invoke(tuple, null));
+                   //resultSet = resultSet  + String.valueOf((char)method.invoke(tuple, null));
+                   row.add(String.valueOf((char)method.invoke(tuple, null)));
                }
                else{
-                   resultSet = resultSet + (String)method.invoke(tuple, null);
+                   //resultSet = resultSet + (String)method.invoke(tuple, null);
+                   row.add((String)method.invoke(tuple, null));
                }
-               resultSet =  resultSet + ",";
+               //resultSet =  resultSet + ",";
             }
-            resultSet = resultSet + "\n";
+            //resultSet = resultSet + "\n";
+            content.add(row);
           }
+          ConsoleTable ct = new ConsoleTable(headers, content);
+          resultSet = ct.printTable();
       }
       catch(Exception e){
           e.printStackTrace();
