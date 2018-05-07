@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -90,7 +91,7 @@ public class Sentencias {
   }
   
   public boolean verifySyntaxInsertInto(String query){
-      String regex = "[\\s]*(INSERT)[\\s]+(INTO)[\\s]+([0-9_A-Z$]+[_A-Z$])[\\s]+((VALUES)|(VALUE))[\\s]*([(]([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"]))([\\s]*[,][\\s]*([.0-9]+|([\"][.0-9_a-z A-Z$]+[\"])))*[)])[\\s]*[;][\\s]*";
+      String regex = "\\s*(INSERT)\\s+(INTO)\\s+([0-9_A-Z$]+[_A-Z$])\\s+([(](\\s*[0-9_A-Z$]+[_A-Z$])(\\s*[,]\\s*[0-9_A-Z$]+[_A-Z$])*[)]\\s+)*((VALUES)|(VALUE))\\s*([(]([.0-9]+|([\\\"][.0-9_a-z A-Z$]+[\\\"]))(\\s*[,]\\s*([.0-9]+|([\\\"][.0-9_a-z A-Z$]+[\\\"])))*[)])\\s*[;]\\s*";
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(query);
       return matcher.matches();
@@ -288,11 +289,11 @@ public class Sentencias {
     if (virtualType.compareTo("VARCHAR") == 0) {
       return "String";
     } else if (virtualType.compareTo("INT") == 0) {
-      return "int";
+      return "Integer";
     } else if (virtualType.compareTo("DOUBLE") == 0) {
-      return "double";
+      return "Double";
     } else {
-      return "char";
+      return "Character";
     }
   }
   /* Fin de los métodos de la sentencia CREATE TABLE */
@@ -331,9 +332,9 @@ public class Sentencias {
       Object tupla = dc.getInstance(tableName);
       ArrayList<String> headers = new ArrayList<String>();
       ArrayList<ArrayList<String>> content = new ArrayList<ArrayList<String>>();
+      String result;
       String resultSet = "";
       try{
-          //System.out.println(tupla.getClass().getName());
           Method[] methods = tupla.getClass().getMethods();
           ArrayList<String> getters = new ArrayList<>();
           for (Method method : methods){
@@ -341,11 +342,8 @@ public class Sentencias {
               if(methodName.contains("get_")){
                   getters.add(methodName);
                   headers.add(methodName.replace("get_", ""));
-                  //resultSet = resultSet + methodName.replace("get_", "");
-                  //resultSet = resultSet + "\t";
               }
           }
-          //resultSet = resultSet + "\n";
           
           for(int i=0;i<tuples.size();i++){
             Object tuple = tuples.get(i);
@@ -353,25 +351,43 @@ public class Sentencias {
             ArrayList<String> row = new ArrayList<String>();
             for(int j=0;j<getters.size();j++){
                method = tuple.getClass().getMethod(getters.get(j),null);
-               if(method.getReturnType().equals(int.class)){
-                   //resultSet = resultSet + Integer.toString((int)method.invoke(tuple, null));
-                   row.add(Integer.toString((int)method.invoke(tuple, null)));
+               if(method.getReturnType().equals(Integer.class)){                  
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result = Integer.toString((Integer)method.invoke(tuple, null));
+                       row.add(result);
+                   }
                }
-               else if(method.getReturnType().equals(double.class)){
-                   //resultSet = resultSet + Double.toString((double)method.invoke(tuple, null));
-                   row.add(Double.toString((double)method.invoke(tuple, null)));
+               else if(method.getReturnType().equals(Double.class)){
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result = Double.toString((Double)method.invoke(tuple, null));
+                       row.add(result);
+                   }
                }
-               else if(method.getReturnType().equals(char.class)){
-                   //resultSet = resultSet  + String.valueOf((char)method.invoke(tuple, null));
-                   row.add(String.valueOf((char)method.invoke(tuple, null)));
+               else if(method.getReturnType().equals(Character.class)){       
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result =  String.valueOf((Character)method.invoke(tuple, null));
+                       row.add(result);
+                   }
                }
                else{
-                   //resultSet = resultSet + (String)method.invoke(tuple, null);
-                   row.add((String)method.invoke(tuple, null));
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result = (String)method.invoke(tuple, null);
+                       row.add(result);
+                   }
                }
-               //resultSet =  resultSet + ",";
             }
-            //resultSet = resultSet + "\n";
             content.add(row);
           }
           ConsoleTable ct = new ConsoleTable(headers, content);
@@ -389,6 +405,7 @@ public class Sentencias {
       ArrayList<String> headers = new ArrayList<String>();
       ArrayList<ArrayList<String>> content = new ArrayList<ArrayList<String>>();
       String resultSet = "";
+      String result;
       
       try{
           //System.out.println(tupla.getClass().getName());
@@ -404,27 +421,46 @@ public class Sentencias {
             Object tuple = tuples.get(i);
             Method method;
             ArrayList<String> row = new ArrayList<String>();
+            
             for(int j=0;j<getters.size();j++){
                method = tuple.getClass().getMethod(getters.get(j),null);
-               if(method.getReturnType().equals(int.class)){
-                   //resultSet = resultSet + Integer.toString((int)method.invoke(tuple, null));
-                   row.add(Integer.toString((int)method.invoke(tuple, null)));
+               if(method.getReturnType().equals(Integer.class)){                  
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result = Integer.toString((Integer)method.invoke(tuple, null));
+                       row.add(result);
+                   }
                }
-               else if(method.getReturnType().equals(double.class)){
-                   //resultSet = resultSet + Double.toString((double)method.invoke(tuple, null));
-                   row.add(Double.toString((double)method.invoke(tuple, null)));
+               else if(method.getReturnType().equals(Double.class)){
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result = Double.toString((Double)method.invoke(tuple, null));
+                       row.add(result);
+                   }
                }
-               else if(method.getReturnType().equals(char.class)){
-                   //resultSet = resultSet  + String.valueOf((char)method.invoke(tuple, null));
-                   row.add(String.valueOf((char)method.invoke(tuple, null)));
+               else if(method.getReturnType().equals(Character.class)){       
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result =  String.valueOf((Character)method.invoke(tuple, null));
+                       row.add(result);
+                   }
                }
                else{
-                   //resultSet = resultSet + (String)method.invoke(tuple, null);
-                   row.add((String)method.invoke(tuple, null));
+                   if(method.invoke(tuple, null) == null){
+                       row.add("null");
+                   }
+                   else{
+                       result = (String)method.invoke(tuple, null);
+                       row.add(result);
+                   }
                }
-               //resultSet =  resultSet + ",";
             }
-            //resultSet = resultSet + "\n";
             content.add(row);
           }
           ConsoleTable ct = new ConsoleTable(headers, content);
@@ -491,16 +527,16 @@ public class Sentencias {
       String type = "String";
       try{
           Integer.parseInt(value);
-          type = "int";
+          type = "Integer";
       }
       catch(NumberFormatException e){
           try{
               Double.parseDouble(value);
-              type = "double";
+              type = "Double";
           }
           catch(NumberFormatException ex){
               if(value.length() == 1){
-                type = "char";
+                type = "Character";
               } 
           }
       }
@@ -513,14 +549,14 @@ public class Sentencias {
           case "String":
               c = String.class;
               break;
-          case "int":
-              c = int.class;
+          case "Integer":
+              c = Integer.class;
               break;
-          case "double":
-              c = double.class;
+          case "Double":
+              c = Double.class;
               break;
           default:
-              c = char.class;
+              c = Character.class;
               break;
       }
       return c;    
@@ -530,22 +566,56 @@ public class Sentencias {
       DynamicCompiler dc = new DynamicCompiler();
       Object tupla = dc.getInstance(tableName);
       try{
-//          System.out.println(tupla.getClass().getName());
-//          Method[] methods = tupla.getClass().getMethods();
-//          for (Method method : methods) {
-//              System.out.println(method.getName());
-//          }
           System.out.println(tableName);
-          Method method  = tupla.getClass().getMethod("extractTypes", null);
-          System.out.println("method = " + method.toString());
-          ArrayList<String> pairs = (ArrayList<String>) method.invoke(tupla, null);
-          System.out.println("Success");
+          int count = query.length() - query.replace("(", "").length();
+          ArrayList<String> pairs;
+          String[] vals;
+                  
+          if(count > 1){
+                int new_index = query.indexOf(")");
+                String rcolumns = (query.substring(query.indexOf("(") + 1, new_index)).toUpperCase();
+                rcolumns = rcolumns.replaceAll("[\\s+]", "");
+                String[] columns = rcolumns.split(",");
+                
+                System.out.println(rcolumns);
+                Method method  = tupla.getClass().getMethod("extractTypes", null);
+                System.out.println("method = " + method.toString());
+                ArrayList<String> allpairs = (ArrayList<String>) method.invoke(tupla, null);
+                System.out.println("Success");
+                String[] pair;
+                pairs = new ArrayList<>();
+                
+                for(int i=0; i<columns.length; i++){
+                    for(int j=0; j<allpairs.size(); j++){
+                        pair = allpairs.get(j).split(",");
+                        if(pair[0].equals(columns[i])){
+                            pairs.add(allpairs.get(j));
+                            break;
+                        }
+                    }
+                }
+                
+                for(int i=0; i<pairs.size(); i++){
+                    System.out.println(pairs.get(i));
+                }
+                
+                query = query.substring(new_index +1);
+                System.out.println(query);
+          }
+          else{
+                Method method  = tupla.getClass().getMethod("extractTypes", null);
+                System.out.println("method = " + method.toString());
+                pairs = (ArrayList<String>) method.invoke(tupla, null);
+                System.out.println("Success");
+          }
           
           String rvals = query.substring(query.indexOf("(") + 1, query.lastIndexOf(")"));
-          String[] vals = rvals.split(",");
+          vals = rvals.split(",");
           System.out.println(vals.length);
           System.out.println(pairs.size());
-          if(pairs.size() == vals.length){
+          
+          if((pairs.size() == vals.length) && (pairs.size() > 0 && vals.length > 0)){
+              System.out.println("Entre");
               String[] pair;
               String val, valtype;
               Method setter;
@@ -561,16 +631,18 @@ public class Sentencias {
                   if(!valtype.equals(pair[1])){
                       return  null;
                   }
+              
+                System.out.println(pair[0] + "," + pair[1]);
                 setter = tupla.getClass().getMethod("set" + pair[0], getClass(pair[1]));
                 
                 switch (valtype) {
                       case "String":
                           setter.invoke(tupla, val);
                           break;
-                      case "int":
+                      case "Integer":
                           setter.invoke(tupla, Integer.parseInt(val));
                           break;
-                      case "double":
+                      case "Double":
                           setter.invoke(tupla, Double.parseDouble(val));
                           break;
                       default:
@@ -578,7 +650,10 @@ public class Sentencias {
                           break;
                   }
               }
-          }            
+          }
+          else{
+              return null;
+          }
       }
       catch(Exception e){
           e.printStackTrace();
@@ -738,14 +813,14 @@ public class Sentencias {
                     String returnType;
                     method = tuple.getClass().getMethod("get_"+ attribute, null);
                     if(method.getReturnType().equals(int.class)){
-                        returnType = "int";
+                        returnType = "Integer";
                         if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
                             int val1 = Integer.parseInt(value1);
                             int val2 = Integer.parseInt(value2);
                             int getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (int)method.invoke(tuple, null);
+                                getval = (Integer)method.invoke(tuple, null);
                                 if(verifier.matchValBetween(val1,val2,getval)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -757,14 +832,14 @@ public class Sentencias {
                         }
                     }
                     else if(method.getReturnType().equals(double.class)){
-                        returnType = "double";
+                        returnType = "Double";
                         if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
                             double val1 = Double.parseDouble(value1);
                             double val2 = Double.parseDouble(value2);
                             double getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (double)method.invoke(tuple, null);
+                                getval = (Double)method.invoke(tuple, null);
                                 if(verifier.matchValBetween(val1,val2,getval)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -776,14 +851,14 @@ public class Sentencias {
                         }
                     }
                     else if(method.getReturnType().equals(char.class)){
-                        returnType = "char";
+                        returnType = "Character";
                         if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
                             char val1 = value1.charAt(0);
                             char val2 = value2.charAt(0);
                             char getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (char)method.invoke(tuple, null);
+                                getval = (Character)method.invoke(tuple, null);
                                 if(verifier.matchValBetween(val1,val2,getval)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -830,14 +905,14 @@ public class Sentencias {
                     }
                     String returnType;
                     method = tuple.getClass().getMethod("get_"+ attribute, null);
-                    if(method.getReturnType().equals(int.class)){
-                        returnType = "int";
+                    if(method.getReturnType().equals(Integer.class)){
+                        returnType = "Integer";
                         if(returnType.equals(getValType(value))){
                             int val = Integer.parseInt(value);
                             int getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (int)method.invoke(tuple, null);
+                                getval = (Integer)method.invoke(tuple, null);
                                 if(verifier.matchVal(operator,getval,val)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -849,13 +924,13 @@ public class Sentencias {
                         }
                     }
                     else if(method.getReturnType().equals(double.class)){
-                        returnType = "double";
+                        returnType = "Double";
                         if(returnType.equals(getValType(value))){
                             double val = Double.parseDouble(value);
                             double getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (double)method.invoke(tuple, null);
+                                getval = (Double)method.invoke(tuple, null);
                                 if(verifier.matchVal(operator,getval, val)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -867,13 +942,13 @@ public class Sentencias {
                         }
                     }
                     else if(method.getReturnType().equals(char.class)){
-                        returnType = "char";
+                        returnType = "Character";
                         if(returnType.equals(getValType(value))){
                             char val = value.charAt(0);
                             char getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (char)method.invoke(tuple, null);
+                                getval = (Character)method.invoke(tuple, null);
                                 if(verifier.matchVal(operator,getval, val)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -929,18 +1004,20 @@ public class Sentencias {
                       }
                     String returnType;
                     method = tuple.getClass().getMethod("get_"+ attribute, null);
-                    if(method.getReturnType().equals(int.class)){
-                        returnType = "int";
+                    if(method.getReturnType().equals(Integer.class)){
+                        returnType = "Integer";
                         if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
                             int val1 = Integer.parseInt(value1);
                             int val2 = Integer.parseInt(value2);
                             int getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (int)method.invoke(tuple, null);
-                                if(verifier.matchValBetween(val1,val2,getval)){
-                                    System.out.println(getval);
-                                    matchedTuples.add(i);
+                                if(method.invoke(tuple, null) != null){
+                                    getval = (Integer)method.invoke(tuple, null);
+                                    if(verifier.matchValBetween(val1,val2,getval)){
+                                        System.out.println(getval);
+                                        matchedTuples.add(i);
+                                    }
                                 }
                             }
                         }
@@ -948,18 +1025,20 @@ public class Sentencias {
                             return null;
                         }
                     }
-                    else if(method.getReturnType().equals(double.class)){
-                        returnType = "double";
+                    else if(method.getReturnType().equals(Double.class)){
+                        returnType = "Double";
                         if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
                             double val1 = Double.parseDouble(value1);
                             double val2 = Double.parseDouble(value2);
                             double getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (double)method.invoke(tuple, null);
-                                if(verifier.matchValBetween(val1,val2,getval)){
-                                    System.out.println(getval);
-                                    matchedTuples.add(i);
+                                if(method.invoke(tuple, null) != null){
+                                    getval = (Double)method.invoke(tuple, null);
+                                    if(verifier.matchValBetween(val1,val2,getval)){
+                                        System.out.println(getval);
+                                        matchedTuples.add(i);
+                                    }
                                 }
                             }
                         }
@@ -967,18 +1046,20 @@ public class Sentencias {
                             return null;
                         }
                     }
-                    else if(method.getReturnType().equals(char.class)){
-                        returnType = "char";
+                    else if(method.getReturnType().equals(Character.class)){
+                        returnType = "Character";
                         if(returnType.equals(getValType(value1)) && returnType.equals(getValType(value2))){
                             char val1 = value1.charAt(0);
                             char val2 = value2.charAt(0);
                             char getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (char)method.invoke(tuple, null);
-                                if(verifier.matchValBetween(val1,val2,getval)){
-                                    System.out.println(getval);
-                                    matchedTuples.add(i);
+                                if(method.invoke(tuple, null) != null){
+                                    getval = (Character)method.invoke(tuple, null);
+                                    if(verifier.matchValBetween(val1,val2,getval)){
+                                        System.out.println(getval);
+                                        matchedTuples.add(i);
+                                    }
                                 }
                             }
                         }
@@ -992,11 +1073,13 @@ public class Sentencias {
                             String getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (String)method.invoke(tuple, null);
-                                if(verifier.matchValBetween(value1,value2,getval)){
-                                    System.out.println(getval);
-                                    matchedTuples.add(i);
-                                }  
+                                if(method.invoke(tuple, null) != null){
+                                    getval = (String)method.invoke(tuple, null);
+                                    if(verifier.matchValBetween(value1,value2,getval)){
+                                        System.out.println(getval);
+                                        matchedTuples.add(i);
+                                    }
+                                }
                             }
                         }
                         else{
@@ -1019,14 +1102,14 @@ public class Sentencias {
                     }
                     String returnType;
                     method = tuple.getClass().getMethod("get_"+ attribute, null);
-                    if(method.getReturnType().equals(int.class)){
-                        returnType = "int";
+                    if(method.getReturnType().equals(Integer.class)){
+                        returnType = "Integer";
                         if(returnType.equals(getValType(value))){
                             int val = Integer.parseInt(value);
                             int getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (int)method.invoke(tuple, null);
+                                getval = (Integer)method.invoke(tuple, null);
                                 if(verifier.matchVal(operator,getval,val)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -1037,14 +1120,14 @@ public class Sentencias {
                             return null;
                         }
                     }
-                    else if(method.getReturnType().equals(double.class)){
-                        returnType = "double";
+                    else if(method.getReturnType().equals(Double.class)){
+                        returnType = "Double";
                         if(returnType.equals(getValType(value))){
                             double val = Double.parseDouble(value);
                             double getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (double)method.invoke(tuple, null);
+                                getval = (Double)method.invoke(tuple, null);
                                 if(verifier.matchVal(operator,getval, val)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -1055,14 +1138,14 @@ public class Sentencias {
                             return null;
                         }
                     }
-                    else if(method.getReturnType().equals(char.class)){
-                        returnType = "char";
+                    else if(method.getReturnType().equals(Character.class)){
+                        returnType = "Character";
                         if(returnType.equals(getValType(value))){
                             char val = value.charAt(0);
                             char getval;
                             for(int i=0; i<tuples.size(); i++){
                                 tuple = tuples.get(i);
-                                getval = (char)method.invoke(tuple, null);
+                                getval = (Character)method.invoke(tuple, null);
                                 if(verifier.matchVal(operator,getval, val)){
                                     System.out.println(getval);
                                     matchedTuples.add(i);
@@ -1135,12 +1218,12 @@ public class Sentencias {
                     }
                 }
                  break;
-             case "int":
+             case "Integer":
                  int intval = Integer.parseInt(value);
                  for(int i=0;i<matchedTuples.size();i++){
                     tuple = tuples.get(matchedTuples.get(i));
                     Class[] typeParameters= method.getParameterTypes();
-                    if(typeParameters[0].equals(int.class)){
+                    if(typeParameters[0].equals(Integer.class)){
                         method.invoke(tuple, intval);
                         tuples.set(matchedTuples.get(i), tuple);
                     }
@@ -1149,12 +1232,12 @@ public class Sentencias {
                     }
                 }
                  break;
-             case "double":
+             case "Double":
                  double doubleval = Double.parseDouble(value);
                  for(int i=0;i<matchedTuples.size();i++){
                     tuple = tuples.get(matchedTuples.get(i));
                     Class[] typeParameters= method.getParameterTypes();
-                    if(typeParameters[0].equals(double.class)){
+                    if(typeParameters[0].equals(Double.class)){
                         method.invoke(tuple, doubleval);
                         tuples.set(matchedTuples.get(i), tuple);
                     }
@@ -1168,7 +1251,7 @@ public class Sentencias {
                  for(int i=0;i<matchedTuples.size();i++){
                     tuple = tuples.get(matchedTuples.get(i));
                     Class[] typeParameters= method.getParameterTypes();
-                    if(typeParameters[0].equals(char.class)){
+                    if(typeParameters[0].equals(Character.class)){
                         method.invoke(tuple, charval);
                         tuples.set(matchedTuples.get(i), tuple);
                     }

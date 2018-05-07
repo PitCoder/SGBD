@@ -368,7 +368,7 @@ public class Servidor implements java.io.Serializable{
                                 }
                             }
                             else{
-                                mensajeAEnviar = "Para actualizar, deben de haber por lo menos 1 registro en la tablas";
+                                mensajeAEnviar = "Registro vacio";
                             }                       
                         }
                         else{
